@@ -1,12 +1,13 @@
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
+import { getUsernameFromEmail } from '../../utils/helpers';
 
 export default function Header() {
   const { user, logOut } = useAuth();
 
   return (
     <header className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+      <div className="max-w-8xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
         <Link href="/" className="text-xl font-bold text-blue-600">
           ChatApp
         </Link>
@@ -18,7 +19,7 @@ export default function Header() {
               </span>
               <button
                 onClick={logOut}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-white bg-red-600 font-semibold px-3 py-1 rounded-full hover:bg-red-700 cursor-pointer"
               >
                 Sign out
               </button>

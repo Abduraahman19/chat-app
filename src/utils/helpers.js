@@ -1,9 +1,9 @@
-export const formatDate = (timestamp) => {
-  if (!timestamp?.toDate) return '...';
-  const date = timestamp.toDate();
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+export const getUsernameFromEmail = (email) => {
+  if (!email) return 'Anonymous';
+  return email.split('@')[0];
 };
 
-export const getUsernameFromEmail = (email) => {
-  return email?.split('@')[0] || 'Anonymous';
+export const formatDate = (timestamp) => {
+  if (!timestamp?.toDate) return '';
+  return timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
