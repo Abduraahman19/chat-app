@@ -9,19 +9,22 @@ export default function Message({ message }) {
   const isCurrentUser = message.senderId === user?.uid;
 
   return (
-    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-4 px-4`}>
+    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-2 px-4`}>
       <div
         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
           isCurrentUser
-            ? 'bg-blue-500 text-white rounded-br-none'
-            : 'bg-gray-200 text-gray-800 rounded-bl-none'
-        } transition-all duration-300 transform hover:scale-105`}
+            ? 'bg-[#005c4b] text-white rounded-tr-none'
+            : 'bg-[#202c33] text-white rounded-tl-none'
+        } shadow-md`}
       >
         <p className="text-sm">{message.text}</p>
-        <div className={`text-xs mt-1 opacity-70 ${
-          isCurrentUser ? 'text-blue-100' : 'text-gray-500'
+        <div className={`text-xs mt-1 text-right ${
+          isCurrentUser ? 'text-[#a7b6b2]' : 'text-[#a7b6b2]'
         }`}>
           {formatDate(message.createdAt)}
+          {isCurrentUser && (
+            <span className="ml-1">✓✓</span>
+          )}
         </div>
       </div>
     </div>
