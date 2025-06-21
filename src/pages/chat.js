@@ -1,6 +1,4 @@
-// src/app/chat/page.js
 'use client'
-
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -10,6 +8,9 @@ import ChatInput from '../components/Chat/ChatInput';
 import ContactList from '../components/Chat/ContactList';
 import Sidebar from '../components/Layout/Sidebar';
 import Header from '../components/Layout/Header';
+import { doc, deleteDoc, updateDoc, arrayRemove, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db } from '../utils/firebase';
+import { toast } from 'react-hot-toast';
 
 export default function Chat() {
   const { user, loading, contacts } = useAuth();
@@ -22,6 +23,61 @@ export default function Chat() {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  const handleDeleteMessage = async (messageId, deleteForEveryone) => {
+    if (!activeContact) return;
+    
+    try {
+      const chatId = [user.uid, activeContact.id].sort().join('_');
+      
+      if (deleteForEveryone) {
+        // Delete for everyone - remove from Firestore
+        await deleteDoc(doc(db, 'messages', messageId));
+        
+        // Update last message in chat if needed
+        const chatRef = doc(db, 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
+        
+        if (chatSnap.exists() && chatSnap.data().lastMessageId === messageId) {
+          // Find new last message
+          const messagesQuery = query(
+            collection(db, 'messages'),
+            where('chatId', '==', chatId),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+          );
+          
+          const lastMessageSnap = await getDocs(messagesQuery);
+          if (!lastMessageSnap.empty) {
+            const lastMsg = lastMessageSnap.docs[0];
+            await updateDoc(chatRef, {
+              lastMessage: lastMsg.data().text,
+              lastMessageAt: lastMsg.data().createdAt,
+              lastMessageId: lastMsg.id
+            });
+          } else {
+            // No messages left
+            await updateDoc(chatRef, {
+              lastMessage: null,
+              lastMessageAt: null,
+              lastMessageId: null
+            });
+          }
+        }
+      } else {
+        // Delete only for me - add to deletedMessages array
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          deletedMessages: arrayRemove(messageId)
+        });
+      }
+      
+      toast.success('Message deleted successfully');
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error(error.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -50,7 +106,12 @@ export default function Chat() {
                 </h2>
               </div>
 
-              <MessageList messages={messages} />
+              <MessageList 
+                messages={messages.filter(msg => 
+                  !user?.deletedMessages?.includes(msg.id)
+                )} 
+                onDeleteMessage={handleDeleteMessage}
+              />
               <ChatInput
                 sendMessage={sendMessage}
                 onNewContact={() => setActiveContact(null)}

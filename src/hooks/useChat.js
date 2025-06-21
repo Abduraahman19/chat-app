@@ -1,14 +1,12 @@
-// src/hooks/useChat.js
 import { useState, useEffect } from 'react';
-import { db, auth } from '../utils/firebase'; // Make sure auth is imported
+import { db, auth } from '../utils/firebase';
 import {
   collection,
   addDoc,
   serverTimestamp,
   query,
-  orderBy,
-  onSnapshot,
   where,
+  onSnapshot, // Make sure this is imported
   doc,
   getDoc,
   updateDoc
@@ -17,18 +15,16 @@ import {
 export function useChat(chatId) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Added error state
+  const [error, setError] = useState(null);
 
   const sendMessage = async (text) => {
     if (!chatId || !text.trim()) return;
 
     try {
-      // ✅ Added auth check (from new code)
       if (!auth.currentUser) {
         throw new Error("You must be logged in to send messages");
       }
 
-      // ✅ Added chat existence & participant check (from new code)
       const chatDoc = await getDoc(doc(db, 'chats', chatId));
       if (!chatDoc.exists()) {
         throw new Error("Chat does not exist");
@@ -38,23 +34,25 @@ export function useChat(chatId) {
         throw new Error("You're not a participant in this chat");
       }
 
-      // Original message sending logic (kept)
+      // Add client-side timestamp
+      const timestamp = new Date();
+      
       await addDoc(collection(db, 'messages'), {
         text,
         chatId,
         senderId: auth.currentUser.uid,
-        createdAt: serverTimestamp()
+        createdAt: timestamp,
+        timestamp: timestamp.getTime() // For client-side sorting
       });
 
-      // Update last message in chat (kept)
       await updateDoc(doc(db, 'chats', chatId), {
         lastMessage: text,
-        lastMessageAt: serverTimestamp()
+        lastMessageAt: timestamp
       });
 
     } catch (error) {
       console.error('Error sending message:', error);
-      setError(error.message); // Added error handling
+      setError(error.message);
       throw error;
     }
   };
@@ -67,32 +65,41 @@ export function useChat(chatId) {
     }
 
     setLoading(true);
+    
     const q = query(
       collection(db, 'messages'),
       where('chatId', '==', chatId)
-      // Remove orderBy until index is created
     );
 
-    // ✅ Improved snapshot handling (from new code)
-    const unsubscribe = onSnapshot(q,
+    const unsubscribe = onSnapshot(q, 
       (querySnapshot) => {
         const messagesData = [];
         querySnapshot.forEach((doc) => {
-          messagesData.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          messagesData.push({ 
+            id: doc.id, 
+            ...data,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            timestamp: data.timestamp || data.createdAt?.toMillis() || Date.now()
+          });
         });
+        
+        // Client-side sorting
+        messagesData.sort((a, b) => a.timestamp - b.timestamp);
+        
         setMessages(messagesData);
         setLoading(false);
-        setError(null); // Clear errors on success
+        setError(null);
       },
       (err) => {
         console.error('Messages error:', err);
-        setError(err.message); // Set error state
+        setError(err.message);
         setLoading(false);
       }
     );
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, [chatId]);
 
-  return { messages, sendMessage, loading, error }; // Added error to return
+  return { messages, sendMessage, loading, error };
 }
