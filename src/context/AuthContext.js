@@ -1,5 +1,4 @@
 'use client'
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../utils/firebase';
 import {
@@ -12,16 +11,11 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { db } from '../utils/firebase';
+import { updateProfile as updateFirebaseProfile } from 'firebase/auth';
 import {
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  deleteDoc
+  doc, setDoc, getDoc, collection,
+  query, where, getDocs, updateDoc,
+  deleteDoc, arrayUnion, serverTimestamp
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -32,107 +26,221 @@ export function AuthContextProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState([]);
-  const [newContactEmail, setNewContactEmail] = useState('');
-  const [showContactForm, setShowContactForm] = useState(false);
+  const [isUserOnline, setIsUserOnline] = useState(false);
+  const router = useRouter();
 
-  // User sign up with email, password and display name
+  // Enhanced presence management
+  const updatePresence = async (isOnline) => {
+    if (!user?.uid) return;
+
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        lastSeen: isOnline ? serverTimestamp() : 'offline',
+        status: isOnline ? "Online" : "Offline",
+        isOnline: isOnline
+      });
+      setIsUserOnline(isOnline);
+    } catch (error) {
+      console.error("Error updating presence:", error);
+      toast.error("Failed to update online status");
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Update presence on mount
+    updatePresence(true);
+    
+    // Set up interval to update presence
+    const interval = setInterval(() => updatePresence(true), 30000); // Every 30 seconds
+
+    // Handle disconnect
+    const handleBeforeUnload = () => updatePresence(false);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      updatePresence(false);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user?.uid]);
+
+  // Enhanced fetchContacts with error handling
+  const fetchContacts = async (userId) => {
+    if (!userId) {
+      setContacts([]);
+      return;
+    }
+
+    try {
+      // First get all chats where user is a participant
+      const chatsRef = collection(db, 'chats');
+      const q = query(chatsRef, where('participants', 'array-contains', userId));
+      const querySnapshot = await getDocs(q);
+
+      // Extract all unique contact IDs
+      const contactIds = [];
+      querySnapshot.forEach(doc => {
+        const participants = doc.data().participants;
+        const otherUserId = participants.find(id => id !== userId);
+        if (otherUserId && !contactIds.includes(otherUserId)) {
+          contactIds.push(otherUserId);
+        }
+      });
+
+      // Fetch contact details in parallel
+      const contactsData = await Promise.all(
+        contactIds.map(async id => {
+          const userDoc = await getDoc(doc(db, 'users', id));
+          if (userDoc.exists()) {
+            return { 
+              id: userDoc.id,
+              ...userDoc.data(),
+              chatId: [userId, id].sort().join('_')
+            };
+          }
+          return null;
+        })
+      );
+
+      // Filter out any null values and set contacts
+      setContacts(contactsData.filter(contact => contact !== null));
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      toast.error('Failed to load contacts');
+      setContacts([]);
+    }
+  };
+
+  // User sign up
   const signUp = async (email, password, displayName) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-      // Update profile and send verification email
+      
+      // Update auth profile
       await updateProfile(userCredential.user, { displayName });
       await sendEmailVerification(userCredential.user);
 
-      // Create user document
+      // Create user document in Firestore
       await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
         email: email.toLowerCase().trim(),
         displayName,
-        uid: userCredential.user.uid,
         emailVerified: false,
-        createdAt: new Date().toISOString(),
-        photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}`
+        createdAt: serverTimestamp(),
+        lastSeen: serverTimestamp(),
+        status: "Hey there! I'm using ChatApp",
+        photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`
       });
 
-      // Force immediate logout after signup
+      // Log out and ask user to verify email
       await signOut(auth);
-
-      return { success: true, message: 'Verification email sent' };
+      return { success: true, message: 'Verification email sent. Please verify your email before logging in.' };
     } catch (error) {
       console.error('Signup error:', error);
-      throw error;
+      let errorMessage = 'Signup failed. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Email already in use. Please use a different email.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters.';
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
-  // Add this function to resend verification emails
-  const resendVerificationEmail = async () => {
-    if (!auth.currentUser) throw new Error('No user logged in');
-    try {
-      await sendEmailVerification(auth.currentUser);
-      return true;
-    } catch (error) {
-      console.error('Resend error:', error);
-      throw error;
-    }
-  };
-
-  // User login with email and password
+  // User login
   const logIn = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        await signOut(auth);
+        throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+      }
 
-      // Update last login time
+      // Update last login timestamp
       await updateDoc(doc(db, 'users', userCredential.user.uid), {
-        lastLogin: new Date().toISOString()
+        lastLogin: serverTimestamp(),
+        lastSeen: serverTimestamp(),
+        isOnline: true
       });
 
       return userCredential;
     } catch (error) {
       console.error('Login error:', error);
-      toast.error(error.message);
-      throw error;
+      let errorMessage = 'Login failed. Please check your credentials.';
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No user found with this email.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
   // User logout
   const logOut = async () => {
     try {
+      if (user) {
+        // Update presence status before logging out
+        await updateDoc(doc(db, 'users', user.uid), {
+          lastSeen: serverTimestamp(),
+          isOnline: false
+        });
+      }
+      
       await signOut(auth);
+      setUser(null);
+      setContacts([]);
+      router.push('/');
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
-      toast.error(error.message);
+      toast.error('Failed to logout. Please try again.');
     }
   };
 
-  // Delete user account
+  // Delete account
   const deleteAccount = async () => {
-    if (!user) return;
-
+    if (!user) return false;
+    
     try {
-      // Delete from Firestore
+      // Delete user document first
       await deleteDoc(doc(db, 'users', user.uid));
-
-      // Delete from Auth
+      
+      // Then delete auth user
       await deleteUser(auth.currentUser);
-
+      
       toast.success('Account deleted successfully');
       return true;
     } catch (error) {
       console.error('Account deletion error:', error);
-      toast.error(error.message);
+      toast.error('Failed to delete account. Please try again.');
       return false;
     }
   };
 
-  // Add a new contact by email
+  // Add contact with proper validation
 const addContact = async (email) => {
   if (!user) throw new Error('Please login first');
+  
+  const cleanEmail = email.toLowerCase().trim();
+  
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    throw new Error('Please enter a valid email address');
+  }
 
   try {
-    const cleanEmail = email.toLowerCase().trim();
-    
-    // Check if user exists
+    // Check if user exists with this email
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', cleanEmail));
     const querySnapshot = await getDocs(q);
@@ -145,28 +253,50 @@ const addContact = async (email) => {
     const contactData = contactDoc.data();
     const contactId = contactDoc.id;
 
-    // Validation checks
     if (contactId === user.uid) {
-      throw new Error("You can't add yourself");
-    }
-    if (contacts.some(c => c.id === contactId)) {
-      throw new Error('Contact already exists');
+      throw new Error("You can't add yourself as a contact");
     }
 
-    // Create chat room with both participants
+    // Check if contact already exists
+    const existingContact = contacts.find(c => c.id === contactId);
+    if (existingContact) {
+      throw new Error('Contact already exists in your list');
+    }
+
+    // Create chat room with additional metadata
     const roomId = [user.uid, contactId].sort().join('_');
-    await setDoc(doc(db, 'chats', roomId), {
+    const chatRef = doc(db, 'chats', roomId);
+    
+    const chatDoc = await getDoc(chatRef);
+    if (chatDoc.exists()) {
+      throw new Error('Chat with this contact already exists');
+    }
+
+    // Create new chat with all required fields
+    await setDoc(chatRef, {
       participants: [user.uid, contactId],
-      createdAt: new Date(),
+      participantNames: {
+        [user.uid]: user.displayName || getUsernameFromEmail(user.email),
+        [contactId]: contactData.displayName || getUsernameFromEmail(contactData.email)
+      },
+      participantPhotos: {
+        [user.uid]: user.photoURL || '',
+        [contactId]: contactData.photoURL || ''
+      },
+      createdAt: serverTimestamp(),
       lastMessage: null,
-      lastMessageAt: null
+      lastMessageAt: null,
+      lastSeen: {
+        [user.uid]: serverTimestamp(),
+        [contactId]: null
+      }
     });
 
-    // Add to local state
-    setContacts(prev => [...prev, { 
-      id: contactId, 
+    // Update local state
+    setContacts(prev => [...prev, {
+      id: contactId,
       ...contactData,
-      chatId: roomId // Store chatId for easy reference
+      chatId: roomId
     }]);
 
     return contactId;
@@ -176,82 +306,52 @@ const addContact = async (email) => {
   }
 };
 
-  // Handle contact addition with UI feedback
-  const handleAddContact = async () => {
-    if (!newContactEmail.trim()) {
-      toast.error('Please enter an email address');
-      return;
+  // Resend verification email
+  const resendVerificationEmail = async () => {
+    if (!auth.currentUser) {
+      throw new Error('No user is currently signed in');
     }
-
+    
     try {
-      await addContact(newContactEmail);
-      setNewContactEmail('');
-      setShowContactForm(false);
-      toast.success('Contact added successfully!');
+      await sendEmailVerification(auth.currentUser);
+      return { success: true, message: 'Verification email sent successfully' };
     } catch (error) {
-      toast.error(error.message);
-      console.error('Failed to add contact:', error);
-    }
-  };
-
-  // Remove a contact
-  const removeContact = async (contactId) => {
-    try {
-      setContacts(prev => prev.filter(c => c.id !== contactId));
-      toast.success('Contact removed');
-    } catch (error) {
-      console.error('Error removing contact:', error);
-      toast.error('Failed to remove contact');
-    }
-  };
-
-  // Fetch user's contacts
-  const fetchContacts = async (userId) => {
-    if (!userId) return;
-
-    try {
-      const chatsRef = collection(db, 'chats');
-      const q = query(chatsRef, where('participants', 'array-contains', userId));
-      const querySnapshot = await getDocs(q);
-
-      const contactIds = querySnapshot.docs.flatMap(doc =>
-        doc.data().participants.filter(id => id !== userId)
-      );
-
-      // Get unique contacts
-      const uniqueContactIds = [...new Set(contactIds)];
-      const contactsData = await Promise.all(
-        uniqueContactIds.map(async id => {
-          const userDoc = await getDoc(doc(db, 'users', id));
-          return { id, ...userDoc.data() };
-        })
-      );
-
-      setContacts(contactsData);
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
+      console.error('Error resending verification email:', error);
+      throw new Error('Failed to send verification email. Please try again.');
     }
   };
 
   // Update user profile
-  const updateUserProfile = async (updates) => {
-    if (!user) return;
-
+  const updateUserProfile = async (profileData) => {
     try {
-      // Update auth profile
-      await updateProfile(auth.currentUser, updates);
+      if (!user) throw new Error('User not authenticated');
+      
+      // Update Firebase Auth profile
+      await updateFirebaseProfile(auth.currentUser, {
+        displayName: profileData.displayName,
+        photoURL: profileData.photoURL
+      });
 
       // Update Firestore document
-      await updateDoc(doc(db, 'users', user.uid), updates);
+      await updateDoc(doc(db, 'users', user.uid), {
+        displayName: profileData.displayName,
+        photoURL: profileData.photoURL,
+        status: profileData.status || "Hey there! I'm using ChatApp",
+        updatedAt: serverTimestamp()
+      });
 
-      // Refresh user data
-      setUser({ ...auth.currentUser });
-      toast.success('Profile updated successfully');
+      // Update local state
+      setUser(prev => ({
+        ...prev,
+        displayName: profileData.displayName,
+        photoURL: profileData.photoURL,
+        status: profileData.status
+      }));
+
       return true;
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error(error.message);
-      return false;
+      throw error;
     }
   };
 
@@ -259,11 +359,20 @@ const addContact = async (email) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      setLoading(false);
+      
       if (currentUser) {
         await fetchContacts(currentUser.uid);
+        // Update presence status
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          lastSeen: serverTimestamp(),
+          isOnline: true
+        });
+      } else {
+        setContacts([]);
       }
-      setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -272,19 +381,14 @@ const addContact = async (email) => {
       user,
       loading,
       contacts,
-      newContactEmail,
-      setNewContactEmail,
-      showContactForm,
-      setShowContactForm,
+      isUserOnline,
       signUp,
       logIn,
       logOut,
       deleteAccount,
       addContact,
-      handleAddContact,
-      removeContact,
-      updateUserProfile,
-      resendVerificationEmail
+      resendVerificationEmail,
+      updateUserProfile
     }}>
       {children}
     </AuthContext.Provider>

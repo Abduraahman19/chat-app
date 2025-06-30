@@ -22,3 +22,80 @@ body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+/* Smooth transitions for all interactive elements */
+button, a {
+  transition: all 0.2s ease;
+}
+
+/* Better focus states */
+button:focus, a:focus {
+  outline: none;
+  ring: 2px solid rgba(59, 130, 246, 0.5);
+}
+
+/* For the top timestamp */
+.message-timestamp {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  display: inline-block;
+  margin-bottom: 4px;
+  backdrop-filter: blur(4px);
+}
+
+/* For the bottom timestamp */
+.message-time {
+  font-size: 0.7rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin-left: 4px;
+}
+
+.whatsapp-bg {
+  background-color: #e5ddd5; /* WhatsApp light mode background color */
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm40 40h40v40H40V40z' fill='%23dfdbd5' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+  /* This creates the subtle grid pattern seen in WhatsApp */
+}
+
+/* Additional styles for complete WhatsApp light mode look */
+.message-container {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  margin: 4px 8px;
+  border-radius: 7.5px;
+  max-width: 65%;
+}
+
+.received-message {
+  background-color: white;
+  align-self: flex-start;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
+}
+
+.sent-message {
+  background-color: #d9fdd3; /* Light green bubble color */
+  align-self: flex-end;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
+}
+
+.message-sender {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #1a73e8; /* Blue sender name color */
+  margin-bottom: 2px;
+}
+
+.status-indicator {
+  margin-left: 4px;
+  font-size: 0.6rem;
+}
+
+.status-read {
+  color: #53bdeb; /* Blue checkmarks for read */
+}
+
+.status-delivered {
+  color: rgba(0, 0, 0, 0.3); /* Gray checkmarks for delivered */
+}
