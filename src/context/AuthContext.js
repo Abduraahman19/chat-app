@@ -52,7 +52,7 @@ export function AuthContextProvider({ children }) {
 
     // Update presence on mount
     updatePresence(true);
-    
+
     // Set up interval to update presence
     const interval = setInterval(() => updatePresence(true), 30000); // Every 30 seconds
 
@@ -95,7 +95,7 @@ export function AuthContextProvider({ children }) {
         contactIds.map(async id => {
           const userDoc = await getDoc(doc(db, 'users', id));
           if (userDoc.exists()) {
-            return { 
+            return {
               id: userDoc.id,
               ...userDoc.data(),
               chatId: [userId, id].sort().join('_')
@@ -114,14 +114,20 @@ export function AuthContextProvider({ children }) {
     }
   };
 
-  // User sign up
+  // Enhanced signUp function
   const signUp = async (email, password, displayName) => {
+    let userCredential;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
       // Update auth profile
       await updateProfile(userCredential.user, { displayName });
-      await sendEmailVerification(userCredential.user);
+
+      // Send verification email with settings
+      await sendEmailVerification(userCredential.user, {
+        url: `${window.location.origin}/verify-email?newUser=true`,
+        handleCodeInApp: true
+      });
 
       // Create user document in Firestore
       await setDoc(doc(db, 'users', userCredential.user.uid), {
@@ -135,36 +141,67 @@ export function AuthContextProvider({ children }) {
         photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`
       });
 
-      // Log out and ask user to verify email
-      await signOut(auth);
-      return { success: true, message: 'Verification email sent. Please verify your email before logging in.' };
+      // Return the user without logging out
+      return {
+        success: true,
+        user: userCredential.user,
+        message: 'Verification email sent! Please check your inbox.'
+      };
+
     } catch (error) {
+      // Cleanup if failed
+      if (userCredential?.user) {
+        try {
+          await deleteUser(userCredential.user);
+        } catch (deleteError) {
+          console.error('Error cleaning up failed signup:', deleteError);
+        }
+      }
+
       console.error('Signup error:', error);
       let errorMessage = 'Signup failed. Please try again.';
-      
+
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'Email already in use. Please use a different email.';
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Password should be at least 6 characters.';
       }
-      
+
       throw new Error(errorMessage);
     }
   };
 
-  // User login
+
+  // Enhanced logIn function
   const logIn = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+      const user = userCredential.user;
+
       // Check if email is verified
-      if (!userCredential.user.emailVerified) {
-        await signOut(auth);
-        throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+      if (!user.emailVerified) {
+        // Don't throw error, just redirect to verification
+        router.push('/verify-email');
+        return null;
+      }
+
+      // Check/create user document
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email.toLowerCase().trim(),
+          displayName: userCredential.user.displayName || '',
+          emailVerified: userCredential.user.emailVerified,
+          createdAt: serverTimestamp(),
+          lastSeen: serverTimestamp(),
+          status: "Hey there! I'm using ChatApp",
+          photoURL: userCredential.user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userCredential.user.displayName || 'User')}&background=random`
+        });
       }
 
       // Update last login timestamp
-      await updateDoc(doc(db, 'users', userCredential.user.uid), {
+      await updateDoc(doc(db, 'users', user.uid), {
         lastLogin: serverTimestamp(),
         lastSeen: serverTimestamp(),
         isOnline: true
@@ -174,7 +211,7 @@ export function AuthContextProvider({ children }) {
     } catch (error) {
       console.error('Login error:', error);
       let errorMessage = 'Login failed. Please check your credentials.';
-      
+
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'No user found with this email.';
       } else if (error.code === 'auth/wrong-password') {
@@ -182,44 +219,52 @@ export function AuthContextProvider({ children }) {
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
-      
+
       throw new Error(errorMessage);
     }
   };
 
   // User logout
-  const logOut = async () => {
-    try {
-      if (user) {
-        // Update presence status before logging out
-        await updateDoc(doc(db, 'users', user.uid), {
-          lastSeen: serverTimestamp(),
-          isOnline: false
-        });
-      }
-      
+const logOut = async () => {
+  try {
+    // Skip Firestore update if user doesn't exist
+    if (!user) {
       await signOut(auth);
-      setUser(null);
-      setContacts([]);
-      router.push('/');
-      toast.success('Logged out successfully');
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Failed to logout. Please try again.');
+      return;
     }
-  };
+
+    // Try to update presence status, but don't fail if it doesn't work
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        lastSeen: serverTimestamp(),
+        isOnline: false
+      });
+    } catch (updateError) {
+      console.warn("Failed to update presence status:", updateError);
+      // Continue with logout even if update fails
+    }
+    
+    await signOut(auth);
+    setUser(null);
+    setContacts([]);
+    router.push('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+    throw error; // Re-throw to handle in components
+  }
+};
 
   // Delete account
   const deleteAccount = async () => {
     if (!user) return false;
-    
+
     try {
       // Delete user document first
       await deleteDoc(doc(db, 'users', user.uid));
-      
+
       // Then delete auth user
       await deleteUser(auth.currentUser);
-      
+
       toast.success('Account deleted successfully');
       return true;
     } catch (error) {
@@ -230,94 +275,112 @@ export function AuthContextProvider({ children }) {
   };
 
   // Add contact with proper validation
-const addContact = async (email) => {
-  if (!user) throw new Error('Please login first');
-  
-  const cleanEmail = email.toLowerCase().trim();
-  
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-    throw new Error('Please enter a valid email address');
-  }
+  const addContact = async (email) => {
+    if (!user) throw new Error('Please login first');
 
-  try {
-    // Check if user exists with this email
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', cleanEmail));
-    const querySnapshot = await getDocs(q);
+    const cleanEmail = email.toLowerCase().trim();
 
-    if (querySnapshot.empty) {
-      throw new Error('No user found with this email');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      throw new Error('Please enter a valid email address');
     }
 
-    const contactDoc = querySnapshot.docs[0];
-    const contactData = contactDoc.data();
-    const contactId = contactDoc.id;
+    try {
+      // Check if user exists with this email
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', cleanEmail));
+      const querySnapshot = await getDocs(q);
 
-    if (contactId === user.uid) {
-      throw new Error("You can't add yourself as a contact");
-    }
-
-    // Check if contact already exists
-    const existingContact = contacts.find(c => c.id === contactId);
-    if (existingContact) {
-      throw new Error('Contact already exists in your list');
-    }
-
-    // Create chat room with additional metadata
-    const roomId = [user.uid, contactId].sort().join('_');
-    const chatRef = doc(db, 'chats', roomId);
-    
-    const chatDoc = await getDoc(chatRef);
-    if (chatDoc.exists()) {
-      throw new Error('Chat with this contact already exists');
-    }
-
-    // Create new chat with all required fields
-    await setDoc(chatRef, {
-      participants: [user.uid, contactId],
-      participantNames: {
-        [user.uid]: user.displayName || getUsernameFromEmail(user.email),
-        [contactId]: contactData.displayName || getUsernameFromEmail(contactData.email)
-      },
-      participantPhotos: {
-        [user.uid]: user.photoURL || '',
-        [contactId]: contactData.photoURL || ''
-      },
-      createdAt: serverTimestamp(),
-      lastMessage: null,
-      lastMessageAt: null,
-      lastSeen: {
-        [user.uid]: serverTimestamp(),
-        [contactId]: null
+      if (querySnapshot.empty) {
+        throw new Error('No user found with this email');
       }
-    });
 
-    // Update local state
-    setContacts(prev => [...prev, {
-      id: contactId,
-      ...contactData,
-      chatId: roomId
-    }]);
+      const contactDoc = querySnapshot.docs[0];
+      const contactData = contactDoc.data();
+      const contactId = contactDoc.id;
 
-    return contactId;
-  } catch (error) {
-    console.error('Error adding contact:', error);
-    throw error;
-  }
-};
+      if (contactId === user.uid) {
+        throw new Error("You can't add yourself as a contact");
+      }
+
+      // Check if contact already exists
+      const existingContact = contacts.find(c => c.id === contactId);
+      if (existingContact) {
+        throw new Error('Contact already exists in your list');
+      }
+
+      // Create chat room with additional metadata
+      const roomId = [user.uid, contactId].sort().join('_');
+      const chatRef = doc(db, 'chats', roomId);
+
+      const chatDoc = await getDoc(chatRef);
+      if (chatDoc.exists()) {
+        throw new Error('Chat with this contact already exists');
+      }
+
+      // Create new chat with all required fields
+      await setDoc(chatRef, {
+        participants: [user.uid, contactId],
+        participantNames: {
+          [user.uid]: user.displayName || getUsernameFromEmail(user.email),
+          [contactId]: contactData.displayName || getUsernameFromEmail(contactData.email)
+        },
+        participantPhotos: {
+          [user.uid]: user.photoURL || '',
+          [contactId]: contactData.photoURL || ''
+        },
+        createdAt: serverTimestamp(),
+        lastMessage: null,
+        lastMessageAt: null,
+        lastSeen: {
+          [user.uid]: serverTimestamp(),
+          [contactId]: null
+        }
+      });
+
+      // Update local state
+      setContacts(prev => [...prev, {
+        id: contactId,
+        ...contactData,
+        chatId: roomId
+      }]);
+
+      return contactId;
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      throw error;
+    }
+  };
 
   // Resend verification email
+  // Enhanced resendVerificationEmail function
   const resendVerificationEmail = async () => {
     if (!auth.currentUser) {
       throw new Error('No user is currently signed in');
     }
-    
+
     try {
-      await sendEmailVerification(auth.currentUser);
-      return { success: true, message: 'Verification email sent successfully' };
+      // Force refresh the user token first
+      await auth.currentUser.getIdToken(true);
+
+      // Then send verification email with custom settings
+      await sendEmailVerification(auth.currentUser, {
+        url: `${window.location.origin}/verify-email`, // Redirect after verification
+        handleCodeInApp: true // Better for mobile apps
+      });
+
+      return {
+        success: true,
+        message: 'Verification email sent successfully! Check your inbox and spam folder.'
+      };
     } catch (error) {
       console.error('Error resending verification email:', error);
-      throw new Error('Failed to send verification email. Please try again.');
+
+      let errorMessage = 'Failed to send verification email. Please try again.';
+      if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please wait before trying again.';
+      }
+
+      throw new Error(errorMessage);
     }
   };
 
@@ -325,7 +388,7 @@ const addContact = async (email) => {
   const updateUserProfile = async (profileData) => {
     try {
       if (!user) throw new Error('User not authenticated');
-      
+
       // Update Firebase Auth profile
       await updateFirebaseProfile(auth.currentUser, {
         displayName: profileData.displayName,
@@ -358,19 +421,40 @@ const addContact = async (email) => {
   // Auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-      
       if (currentUser) {
+        // Force refresh user data
+        await currentUser.reload();
+
+        // Check verification status
+        if (!currentUser.emailVerified) {
+          router.push('/verify-email');
+          return;
+        }
+        // Check if document exists
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (!userDoc.exists()) {
+          // Create the document if missing
+          await setDoc(doc(db, 'users', currentUser.uid), {
+            uid: currentUser.uid,
+            email: currentUser.email.toLowerCase().trim(),
+            displayName: currentUser.displayName || '',
+            emailVerified: currentUser.emailVerified,
+            createdAt: serverTimestamp(),
+            lastSeen: serverTimestamp(),
+            status: "Hey there! I'm using ChatApp",
+            photoURL: currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName || 'User')}&background=random`
+          });
+        }
+
         await fetchContacts(currentUser.uid);
         // Update presence status
         await updateDoc(doc(db, 'users', currentUser.uid), {
           lastSeen: serverTimestamp(),
           isOnline: true
         });
-      } else {
-        setContacts([]);
       }
+      setUser(currentUser);
+      setLoading(false);
     });
 
     return () => unsubscribe();

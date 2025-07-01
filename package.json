@@ -20,7 +20,7 @@
     "autoprefixer": "^10.4.21",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.12.2",
-    "firebase": "^11.9.1",
+    "firebase": "^11.10.0",
     "framer-motion": "^12.18.1",
     "geist": "^1.4.2",
     "next": "^15.3.3",

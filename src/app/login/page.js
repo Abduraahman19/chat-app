@@ -14,11 +14,19 @@ export default function Login() {
   const { logIn, user, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/chat'); // Directly redirect to chat if user is logged in
+// Add similar verification check
+useEffect(() => {
+  if (!loading && user) {
+    if (!user.emailVerified) {
+      router.push('/verify-email');
+      return;
     }
-  }, [user, loading, router]);
+    const timer = setTimeout(() => {
+      router.push('/chat');
+    }, 100);
+    return () => clearTimeout(timer);
+  }
+}, [user, loading, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

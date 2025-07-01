@@ -18,16 +18,30 @@ export default function Signup() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/chat'); // Directly redirect to chat after signup
+      // If user just signed up but not verified, stay on verification page
+      if (!user.emailVerified) {
+        router.push('/verify-email');
+        return;
+      }
+      // Only redirect to chat if verified
+      const timer = setTimeout(() => {
+        router.push('/chat');
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [user, loading, router]);
 
+  // In your signup page component
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
-      await signUp(email, password, displayName);
+      const result = await signUp(email, password, displayName);
+      if (result?.success) {
+        // Redirect to verification page without logging out
+        router.push('/verify-email');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
