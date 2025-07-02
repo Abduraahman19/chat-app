@@ -224,36 +224,40 @@ export function AuthContextProvider({ children }) {
     }
   };
 
-  // User logout
-const logOut = async () => {
-  try {
-    // Skip Firestore update if user doesn't exist
-    if (!user) {
-      await signOut(auth);
-      return;
-    }
-
-    // Try to update presence status, but don't fail if it doesn't work
+  const logOut = async () => {
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        lastSeen: serverTimestamp(),
-        isOnline: false
-      });
-    } catch (updateError) {
-      console.warn("Failed to update presence status:", updateError);
-      // Continue with logout even if update fails
-    }
-    
-    await signOut(auth);
-    setUser(null);
-    setContacts([]);
-    router.push('/');
-  } catch (error) {
-    console.error('Logout error:', error);
-    throw error; // Re-throw to handle in components
-  }
-};
+      // Skip Firestore update if user doesn't exist
+      if (!user) {
+        await signOut(auth);
+        return;
+      }
 
+      // Try to update presence status with timeout
+      try {
+        const updatePromise = updateDoc(doc(db, 'users', user.uid), {
+          lastSeen: serverTimestamp(),
+          isOnline: false
+        });
+
+        // Add timeout to prevent hanging
+        await Promise.race([
+          updatePromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Presence update timeout')), 3000)
+          )
+        ]);
+      } catch (updateError) {
+        console.warn("Presence update failed or timed out:", updateError);
+      }
+
+      await signOut(auth);
+      setUser(null);
+      setContacts([]);
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
+  };
   // Delete account
   const deleteAccount = async () => {
     if (!user) return false;

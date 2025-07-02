@@ -50,10 +50,14 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
+      setIsMenuOpen(false); // Close menu immediately
       await logOut();
-      router.push('/');
+      // Use window.location instead of router.push to ensure complete reset
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
+      // Optionally show error to user
+      toast.error('Logout failed. Please try again.');
     }
   };
 

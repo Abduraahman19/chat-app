@@ -98,31 +98,18 @@ export default function Profile() {
 
 
   const handleLogout = async () => {
-    setLoggingOut(true); // 👈 Add this
+    setLoggingOut(true);
     try {
       await logOut();
-      router.push('/');
-      toast.success('Logged out successfully', {
-        position: 'bottom-center',
-        style: {
-          background: '#4BB543',
-          color: '#fff',
-        }
-      });
+      // Force full page reload to clear all state
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      toast.error('Logout failed', {
-        position: 'bottom-center',
-        style: {
-          background: '#FF3333',
-          color: '#fff',
-        }
-      });
+      toast.error('Logout failed. Please try again.');
     } finally {
-      setLoggingOut(false); // 👈 Add this
+      setLoggingOut(false);
     }
   };
-
 
   if (loading || !user) {
     return (
