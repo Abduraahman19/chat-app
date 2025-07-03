@@ -4,6 +4,7 @@ import { FaRegComments, FaHandshake, FaLightbulb } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import dynamic from 'next/dynamic'
+import Image from 'next/image';
 
 // Dynamically import components that might cause HMR issues
 const Header = dynamic(() => import('@/components/Layout/Header'), {
@@ -155,9 +156,11 @@ export default function About() {
                   className="bg-gradient-to-br from-sky-100 to-indigo-100 p-8 rounded-xl shadow-lg border border-gray-200"
                 >
                   <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
-                    <img
+                    <Image
                       src="/assets/AI.png"
                       alt="Team collaborating"
+                      width={800}  // Set actual dimensions
+                      height={450}
                       className="w-full h-full object-cover rounded-lg"
                     />
                   </div>

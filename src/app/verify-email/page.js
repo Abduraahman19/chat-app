@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
   // Handle resend verification email
   const handleResend = async () => {
     if (countdown > 0 || isResending) return;
-    
+
     setIsResending(true);
     try {
       await user.getIdToken(true); // Refresh token
@@ -86,18 +86,18 @@ export default function VerifyEmailPage() {
       >
         {/* Verification UI components */}
         <VerificationHeader />
-        
+
         {message && <VerificationMessage message={message} />}
-        
+
         <VerificationInstructions />
-        
-        <ResendButton 
+
+        <ResendButton
           onClick={handleResend}
           disabled={countdown > 0 || isResending}
           countdown={countdown}
           isResending={isResending}
         />
-        
+
         <SignOutButton onClick={() => signOut(auth).then(() => router.push('/login'))} />
       </motion.div>
     </div>
@@ -133,8 +133,8 @@ const EmailVerifiedScreen = () => (
         Your email has been successfully verified. Redirecting you to the app...
       </p>
       <div className="w-full bg-gray-200 rounded-full h-2.5">
-        <motion.div 
-          className="bg-blue-600 h-2.5 rounded-full" 
+        <motion.div
+          className="bg-blue-600 h-2.5 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: '100%' }}
           transition={{ duration: 2 }}
@@ -156,11 +156,10 @@ const VerificationMessage = ({ message }) => (
   <motion.div
     initial={{ opacity: 0, y: -10 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`mb-6 p-3 rounded-lg text-center ${
-      message.includes('resent') || message.includes('success')
-        ? 'bg-green-100 text-green-800' 
+    className={`mb-6 p-3 rounded-lg text-center ${message.includes('resent') || message.includes('success')
+        ? 'bg-green-100 text-green-800'
         : 'bg-red-100 text-red-800'
-    }`}
+      }`}
   >
     {message}
   </motion.div>
@@ -170,9 +169,7 @@ const VerificationInstructions = () => (
   <div className="bg-blue-50 rounded-lg p-4 mb-6">
     <div className="flex items-center">
       <FiClock className="text-blue-500 mr-2" />
-      <span className="text-sm text-gray-700">
-        Didn't receive the email? Check your spam folder or resend below.
-      </span>
+      <span className="text-sm text-gray-700">Didn&apos;t receive the email? Check your spam folder or resend below.</span>
     </div>
   </div>
 );
@@ -183,11 +180,10 @@ const ResendButton = ({ onClick, disabled, countdown, isResending }) => (
     disabled={disabled}
     whileHover={disabled ? {} : { scale: 1.02 }}
     whileTap={disabled ? {} : { scale: 0.98 }}
-    className={`w-full py-3 px-4 rounded-xl flex items-center justify-center ${
-      disabled
-        ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+    className={`w-full py-3 px-4 rounded-xl flex items-center justify-center ${disabled
+        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
         : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md hover:shadow-lg'
-    } transition-all duration-300`}
+      } transition-all duration-300`}
   >
     {isResending ? (
       <span className="flex items-center justify-center">
@@ -213,7 +209,7 @@ const ResendButton = ({ onClick, disabled, countdown, isResending }) => (
 
 const SignOutButton = ({ onClick }) => (
   <div className="mt-6 text-center">
-    <button 
+    <button
       onClick={onClick}
       className="flex items-center justify-center text-blue-600 hover:text-blue-800 mx-auto"
     >

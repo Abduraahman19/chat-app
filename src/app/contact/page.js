@@ -6,14 +6,14 @@ import { FaWhatsapp, FaTelegram, FaLinkedin, FaFacebook, FaTwitter } from 'react
 import dynamic from 'next/dynamic'
 
 // Dynamically import components that might cause HMR issues
-const Header = dynamic(() => import('@/components/Layout/Header'), { 
-  ssr: false,
-  loading: () => <div className="h-[62px] bg-sky-50"></div>
+const Header = dynamic(() => import('@/components/Layout/Header'), {
+    ssr: false,
+    loading: () => <div className="h-[62px] bg-sky-50"></div>
 })
 
 const Footer = dynamic(() => import('@/components/Layout/Footer'), {
-  ssr: false,
-  loading: () => null
+    ssr: false,
+    loading: () => null
 })
 
 export default function ContactPage() {
@@ -66,7 +66,7 @@ export default function ContactPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white">
             <Header />
-            
+
             <main className="py-16 px-4 sm:px-6 lg:px-8">
                 {/* Hero Section */}
                 <motion.div
@@ -87,7 +87,7 @@ export default function ContactPage() {
                         Contact Us
                     </h1>
                     <p className="mt-5 max-w-3xl mx-auto text-xl text-gray-600">
-                        Have questions or feedback? We'd love to hear from you!
+                        Have questions or feedback? We&apos;d love to hear from you!
                     </p>
                 </motion.div>
 
@@ -202,7 +202,7 @@ export default function ContactPage() {
                             <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Information</h2>
 
                             <div className="space-y-6">
-                                <motion.div 
+                                <motion.div
                                     whileHover={{ x: 5 }}
                                     className="flex items-start p-4 rounded-xl hover:bg-gray-50 transition-colors duration-300"
                                 >
@@ -220,7 +220,7 @@ export default function ContactPage() {
                                     </div>
                                 </motion.div>
 
-                                <motion.div 
+                                <motion.div
                                     whileHover={{ x: 5 }}
                                     className="flex items-start p-4 rounded-xl hover:bg-gray-50 transition-colors duration-300"
                                 >
@@ -242,7 +242,7 @@ export default function ContactPage() {
                                     </div>
                                 </motion.div>
 
-                                <motion.div 
+                                <motion.div
                                     whileHover={{ x: 5 }}
                                     className="flex items-start p-4 rounded-xl hover:bg-gray-50 transition-colors duration-300"
                                 >
