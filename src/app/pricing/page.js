@@ -4,8 +4,18 @@ import { FaRegComments } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiCheck, FiStar, FiAward, FiZap, FiUsers, FiDatabase, FiHeadphones } from 'react-icons/fi';
 import Link from 'next/link';
-import Footer from '@/components/Layout/Footer';
-import Header from '@/components/Layout/Header';
+import dynamic from 'next/dynamic'
+
+// Dynamically import components that might cause HMR issues
+const Header = dynamic(() => import('@/components/Layout/Header'), {
+  ssr: false,
+  loading: () => <div className="h-[62px] bg-sky-50"></div>
+})
+
+const Footer = dynamic(() => import('@/components/Layout/Footer'), {
+  ssr: false,
+  loading: () => null
+})
 
 const plans = [
   {
@@ -67,11 +77,11 @@ const PricingCard = ({ plan, index }) => {
     >
       {/* Ribbon for featured plan */}
       {plan.featured && (
-        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-4 py-1 transform rotate-45 translate-x-8 translate-y-4 z-10">
+        <div className="absolute -top-1.5 right-2 bg-indigo-600 text-white text-xs font-bold px-4 py-1 transform rotate-45 translate-x-8 translate-y-4 z-10">
           POPULAR
         </div>
       )}
-      
+
       {/* Plan header */}
       <div className={`bg-gradient-to-r ${plan.color} p-8 text-center`}>
         <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
@@ -87,7 +97,7 @@ const PricingCard = ({ plan, index }) => {
         </div>
         <p className="mt-2 text-gray-600">{plan.description}</p>
       </div>
-      
+
       {/* Plan features */}
       <div className="flex-1 bg-white p-8 flex flex-col">
         <ul className="space-y-4 mb-8">
@@ -102,7 +112,7 @@ const PricingCard = ({ plan, index }) => {
             </motion.li>
           ))}
         </ul>
-        
+
         {/* CTA button */}
         <div className="mt-auto pt-4">
           <Link
@@ -136,10 +146,10 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 to-gray-50">
       <Header />
-      
+
       <main className="py-16 px-4 sm:px-6 lg:px-8">
         {/* Hero section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -149,20 +159,20 @@ export default function Pricing() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-sky-500 to-indigo-600 rounded-full mb-6 shadow-lg"
+            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-sky-400 to-sky-700 rounded-full mb-6 shadow-lg"
           >
             <FiStar className="w-8 h-8 text-white" />
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
             className="text-4xl font-extrabold text-gray-900 sm:text-5xl sm:tracking-tight lg:text-6xl"
           >
-            Simple, <span className="bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">Transparent</span> Pricing
+            Simple, <span className="bg-gradient-to-tr from-sky-400 to-sky-700 bg-clip-text text-transparent">Transparent</span> Pricing
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -174,7 +184,7 @@ export default function Pricing() {
         </motion.div>
 
         {/* Pricing cards */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
@@ -200,7 +210,7 @@ export default function Pricing() {
             <div className="flex justify-center">
               <Link
                 href="#"
-                className="px-8 py-3 bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-lg font-medium hover:from-sky-700 hover:to-indigo-700 transition-all duration-300 flex items-center"
+                className="px-8 py-3 bg-gradient-to-tr from-sky-400 to-sky-700 text-white rounded-lg font-medium hover:bg-gradient-to-bl hover:from-sky-400 hover:to-sky-700 transition-all duration-300 flex items-center"
               >
                 <FiHeadphones className="mr-2" />
                 Contact Our Sales Team
@@ -209,7 +219,7 @@ export default function Pricing() {
           </div>
         </motion.div>
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -3,8 +3,18 @@
 import { motion } from 'framer-motion';
 import { FiHelpCircle, FiMail, FiUsers, FiBookOpen, FiArrowRight, FiPhone, FiMessageCircle } from 'react-icons/fi';
 import Link from 'next/link';
-import Header from '@/components/Layout/Header';
-import Footer from '@/components/Layout/Footer';
+import dynamic from 'next/dynamic'
+
+// Dynamically import components that might cause HMR issues
+const Header = dynamic(() => import('@/components/Layout/Header'), { 
+  ssr: false,
+  loading: () => <div className="h-[62px] bg-sky-50"></div>
+})
+
+const Footer = dynamic(() => import('@/components/Layout/Footer'), {
+  ssr: false,
+  loading: () => null
+})
 
 const faqs = [
   {
@@ -107,11 +117,11 @@ export default function HelpCenter() {
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl mb-6 shadow-lg"
+            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-sky-400 to-sky-700 rounded-2xl mb-6 shadow-lg"
           >
             <FiHelpCircle className="w-10 h-10 text-white" />
           </motion.div>
-          <h1 className="text-4xl font-extrabold sm:text-5xl sm:tracking-tight lg:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
+          <h1 className="text-4xl font-extrabold sm:text-5xl sm:tracking-tight lg:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-sky-700">
             Help Center
           </h1>
           <p className="mt-5 max-w-3xl mx-auto text-xl text-gray-600">
@@ -145,7 +155,7 @@ export default function HelpCenter() {
                 <p className="text-gray-600 mb-6">{resource.description}</p>
                 <Link
                   href={resource.href}
-                  className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 group-hover:underline transition-colors duration-300"
+                  className="inline-flex items-center text-sm font-medium text-sky-600 hover:text-sky-700 group-hover:underline transition-colors duration-300"
                 >
                   {resource.name === "Contact Support" ? "Contact us" : "View resources"}
                   <FiArrowRight className="ml-2 h-4 w-4" />
@@ -199,7 +209,7 @@ export default function HelpCenter() {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-3xl p-8 shadow-2xl">
+          <div className="bg-gradient-to-tr from-sky-400 to-sky-700 rounded-3xl p-8 shadow-2xl">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-white mb-4">Still need help?</h2>
               <p className="text-blue-100 max-w-2xl mx-auto mb-8">
@@ -219,7 +229,7 @@ export default function HelpCenter() {
                     <p className="text-sky-600 text-sm mb-4">{method.description}</p>
                     <Link
                       href={method.href}
-                      className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-blue-700 bg-white hover:bg-blue-50 transition-colors duration-300"
+                      className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-sky-700 bg-white hover:bg-sky-100 transition-colors duration-300"
                     >
                       {method.buttonText}
                     </Link>

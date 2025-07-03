@@ -1,11 +1,23 @@
-// src/components/Footer.js
-import { FaRegComments } from 'react-icons/fa';
+'use client'
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+// Dynamically import icons
+const FaRegComments = dynamic(() => import('react-icons/fa').then(mod => mod.FaRegComments));
 
 const Footer = () => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
   return (
     <footer className="bg-sky-50 border-t border-gray-200">
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-col md:flex-row justify-between items-center">
           {/* Logo Section */}

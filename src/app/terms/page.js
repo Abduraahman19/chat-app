@@ -1,8 +1,18 @@
 'use client'
 import { motion } from 'framer-motion'
-import Header from '@/components/Layout/Header'
-import Footer from '@/components/Layout/Footer'
 import { FiCheckCircle, FiAlertTriangle, FiLock, FiEdit2, FiRefreshCw } from 'react-icons/fi'
+import dynamic from 'next/dynamic'
+
+// Dynamically import components that might cause HMR issues
+const Header = dynamic(() => import('@/components/Layout/Header'), { 
+  ssr: false,
+  loading: () => <div className="h-[62px] bg-sky-50"></div>
+})
+
+const Footer = dynamic(() => import('@/components/Layout/Footer'), {
+  ssr: false,
+  loading: () => null
+})
 
 export default function TermsPage() {
   const termsSections = [
@@ -58,11 +68,11 @@ export default function TermsPage() {
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-6"
+              className="inline-flex items-center justify-center w-16 h-16 bg-sky-200 rounded-2xl mb-6"
             >
-              <FiCheckCircle className="w-8 h-8 text-blue-600" />
+              <FiCheckCircle className="w-8 h-8 text-sky-700" />
             </motion.div>
-            <h1 className="text-4xl font-extrabold sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
+            <h1 className="text-4xl font-extrabold sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-sky-700">
               Terms of Service
             </h1>
             <p className="mt-3 text-lg text-gray-600">
@@ -112,7 +122,7 @@ export default function TermsPage() {
           >
             <h3 className="text-lg font-medium text-gray-900 mb-2">Need Help Understanding Our Terms?</h3>
             <p className="text-gray-600">
-              Contact our legal team at <a href="mailto:legal@yourcompany.com" className="text-blue-600 hover:underline">legal@yourcompany.com</a>
+              Contact our legal team at <a href="mailto:legal@yourcompany.com" className="text-sky-600 hover:underline">legal@yourcompany.com</a>
             </p>
           </motion.div>
         </motion.div>

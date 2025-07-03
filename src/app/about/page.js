@@ -3,19 +3,30 @@ import { FiUsers, FiGlobe, FiHeart, FiAward, FiMessageSquare, FiCode, FiGlobe as
 import { FaRegComments, FaHandshake, FaLightbulb } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import Footer from '@/components/Layout/Footer';
-import Header from '@/components/Layout/Header';
+import dynamic from 'next/dynamic'
+
+// Dynamically import components that might cause HMR issues
+const Header = dynamic(() => import('@/components/Layout/Header'), {
+  ssr: false,
+  loading: () => <div className="h-[62px] bg-sky-50"></div>
+})
+
+const Footer = dynamic(() => import('@/components/Layout/Footer'), {
+  ssr: false,
+  loading: () => null
+})
+
 
 const stats = [
-  { id: 1, name: 'Active Users', value: '10,000+', icon: <FiUsers className="h-8 w-8" />, color: 'text-sky-500' },
-  { id: 2, name: 'Countries', value: '150+', icon: <FiGlobe className="h-8 w-8" />, color: 'text-indigo-500' },
+  { id: 1, name: 'Active Users', value: '10,000+', icon: <FiUsers className="h-8 w-8" />, color: 'text-sky-300' },
+  { id: 2, name: 'Countries', value: '150+', icon: <FiGlobe className="h-8 w-8" />, color: 'text-indigo-600' },
   { id: 3, name: 'Customer Satisfaction', value: '98%', icon: <FiHeart className="h-8 w-8" />, color: 'text-rose-500' },
   { id: 4, name: 'Awards Won', value: '12', icon: <FiAward className="h-8 w-8" />, color: 'text-amber-500' },
 ];
 
 const teamMembers = [
   {
-    name: 'Alex Johnson',
+    name: 'Abdur Rahman',
     role: 'CEO & Founder',
     bio: 'Visionary leader with 15+ years in tech innovation',
     icon: <FaLightbulb className="h-6 w-6" />
@@ -42,7 +53,7 @@ const teamMembers = [
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white">
       <Header />
 
       <main>
@@ -51,7 +62,7 @@ export default function About() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
-          className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 lg:pt-32 lg:pb-48 bg-gradient-to-r from-sky-500 to-indigo-600"
+          className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 lg:pt-32 lg:pb-48 bg-gradient-to-r from-sky-500 to-sky-700"
         >
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-[url('/pattern.svg')] bg-repeat"></div>
@@ -121,14 +132,14 @@ export default function About() {
                     className="mt-8 flex flex-wrap gap-4"
                   >
                     <Link
-                      href="/signup"
-                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 transition-all duration-300"
+                      href="#"
+                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-tr hover:bg-gradient-to-bl from-sky-400 to-sky-700 hover:from-sky-400 hover:to-sky-700 hover:shadow-xl shadow-sm transition-all duration-300"
                     >
                       Join Our Community
                     </Link>
                     <Link
                       href="/features"
-                      className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md shadow-sm text-sky-600 bg-white hover:bg-gray-50 transition-colors duration-300"
+                      className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md hover:shadow-xl shadow-sm text-sky-600 bg-white hover:bg-gray-50 transition-colors duration-300"
                     >
                       Explore Features
                     </Link>
@@ -212,7 +223,7 @@ export default function About() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="py-16 sm:py-24 bg-gradient-to-r from-sky-600 to-indigo-600"
+          className="py-16 sm:py-24 bg-gradient-to-r from-sky-500 to-sky-700"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">

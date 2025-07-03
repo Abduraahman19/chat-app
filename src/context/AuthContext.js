@@ -279,50 +279,135 @@ export function AuthContextProvider({ children }) {
   };
 
   // Add contact with proper validation
-  const addContact = async (email) => {
-    if (!user) throw new Error('Please login first');
+  // const addContact = async (email) => {
+  //   if (!user) throw new Error('Please login first');
 
-    const cleanEmail = email.toLowerCase().trim();
+  //   const cleanEmail = email.toLowerCase().trim();
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      throw new Error('Please enter a valid email address');
-    }
+  //   // Validate email format
+  //   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+  //     throw new Error('Please enter a valid email address');
+  //   }
 
+  //   try {
+  //     // Check if user exists with this email
+  //     const usersRef = collection(db, 'users');
+  //     const q = query(usersRef, where('email', '==', cleanEmail));
+  //     const querySnapshot = await getDocs(q);
+
+  //     if (querySnapshot.empty) {
+  //       throw new Error('No account found with this email. Please ask them to create an account first.');
+  //     }
+
+  //     const contactDoc = querySnapshot.docs[0];
+  //     const contactData = contactDoc.data();
+  //     const contactId = contactDoc.id;
+
+  //     // Prevent adding yourself
+  //     if (contactId === user.uid) {
+  //       throw new Error("You can't add yourself as a contact");
+  //     }
+
+  //     // Check if contact already exists
+  //     const existingContact = contacts.find(c => c.id === contactId);
+  //     if (existingContact) {
+  //       throw new Error('This contact is already in your list');
+  //     }
+
+  //     // Create chat room
+  //     const roomId = [user.uid, contactId].sort().join('_');
+  //     const chatRef = doc(db, 'chats', roomId);
+
+  //     // Check if chat already exists
+  //     const chatDoc = await getDoc(chatRef);
+  //     if (chatDoc.exists()) {
+  //       throw new Error('Chat with this contact already exists');
+  //     }
+
+  //     // Create new chat document
+  //     await setDoc(chatRef, {
+  //       participants: [user.uid, contactId],
+  //       participantNames: {
+  //         [user.uid]: user.displayName || getUsernameFromEmail(user.email),
+  //         [contactId]: contactData.displayName || getUsernameFromEmail(contactData.email)
+  //       },
+  //       participantPhotos: {
+  //         [user.uid]: user.photoURL || '',
+  //         [contactId]: contactData.photoURL || ''
+  //       },
+  //       createdAt: serverTimestamp(),
+  //       lastMessage: null,
+  //       lastMessageAt: null,
+  //       lastSeen: {
+  //         [user.uid]: serverTimestamp(),
+  //         [contactId]: null
+  //       }
+  //     });
+
+  //     // Update local state
+  //     setContacts(prev => [...prev, {
+  //       id: contactId,
+  //       ...contactData,
+  //       chatId: roomId
+  //     }]);
+
+  //     return contactId;
+  //   } catch (error) {
+  //     console.error('Error adding contact:', error);
+  //     throw error; // Re-throw with appropriate message
+  //   }
+  // };
+
+
+    const addContact = async (email) => {
     try {
+      if (!user) throw new Error('Authentication required. Please login first.');
+
+      const cleanEmail = email.toLowerCase().trim();
+
+      // Email format validation
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        throw new Error('Please enter a valid email address');
+      }
+
       // Check if user exists with this email
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('email', '==', cleanEmail));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        throw new Error('No user found with this email');
+        throw new Error('No user found with this email. They need to sign up first.');
       }
 
       const contactDoc = querySnapshot.docs[0];
       const contactData = contactDoc.data();
       const contactId = contactDoc.id;
 
+      // Prevent self-add
       if (contactId === user.uid) {
         throw new Error("You can't add yourself as a contact");
       }
 
       // Check if contact already exists
-      const existingContact = contacts.find(c => c.id === contactId);
-      if (existingContact) {
-        throw new Error('Contact already exists in your list');
+      const existingChatQuery = query(
+        collection(db, 'chats'),
+        where('participants', 'array-contains', user.uid)
+      );
+      const existingChats = await getDocs(existingChatQuery);
+
+      const alreadyExists = existingChats.docs.some(doc => 
+        doc.data().participants.includes(contactId)
+      );
+
+      if (alreadyExists) {
+        throw new Error('This contact is already in your list');
       }
 
-      // Create chat room with additional metadata
-      const roomId = [user.uid, contactId].sort().join('_');
-      const chatRef = doc(db, 'chats', roomId);
+      // Create chat ID (sorted to ensure consistency)
+      const chatId = [user.uid, contactId].sort().join('_');
 
-      const chatDoc = await getDoc(chatRef);
-      if (chatDoc.exists()) {
-        throw new Error('Chat with this contact already exists');
-      }
-
-      // Create new chat with all required fields
-      await setDoc(chatRef, {
+      // Create chat document with all required fields
+      await setDoc(doc(db, 'chats', chatId), {
         participants: [user.uid, contactId],
         participantNames: {
           [user.uid]: user.displayName || getUsernameFromEmail(user.email),
@@ -338,20 +423,38 @@ export function AuthContextProvider({ children }) {
         lastSeen: {
           [user.uid]: serverTimestamp(),
           [contactId]: null
-        }
+        },
+        // Additional useful metadata
+        isGroup: false,
+        updatedAt: serverTimestamp()
       });
 
       // Update local state
       setContacts(prev => [...prev, {
         id: contactId,
         ...contactData,
-        chatId: roomId
+        chatId: chatId
       }]);
 
-      return contactId;
+      return {
+        success: true,
+        chatId: chatId,
+        contactName: contactData.displayName || cleanEmail.split('@')[0]
+      };
+
     } catch (error) {
-      console.error('Error adding contact:', error);
-      throw error;
+      console.error('Add Contact Error:', error);
+
+      let errorMessage = error.message;
+
+      // Handle specific Firebase errors
+      if (error.code === 'permission-denied') {
+        errorMessage = 'You dont have permission to add contacts.';
+      } else if (error.code === 'not-found') {
+        errorMessage = 'Required data not found. Please try again.';
+      }
+
+      throw new Error(errorMessage);
     }
   };
 

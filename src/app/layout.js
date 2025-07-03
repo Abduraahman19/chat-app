@@ -1,4 +1,3 @@
-// src/app/layout.js
 import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import Providers from '../components/Providers';

@@ -3,8 +3,18 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { FiMail, FiPhone, FiMapPin, FiSend, FiClock } from 'react-icons/fi'
 import { FaWhatsapp, FaTelegram, FaLinkedin, FaFacebook, FaTwitter } from 'react-icons/fa'
-import Header from '@/components/Layout/Header'
-import Footer from '@/components/Layout/Footer'
+import dynamic from 'next/dynamic'
+
+// Dynamically import components that might cause HMR issues
+const Header = dynamic(() => import('@/components/Layout/Header'), { 
+  ssr: false,
+  loading: () => <div className="h-[62px] bg-sky-50"></div>
+})
+
+const Footer = dynamic(() => import('@/components/Layout/Footer'), {
+  ssr: false,
+  loading: () => null
+})
 
 export default function ContactPage() {
     const [formData, setFormData] = useState({
@@ -69,11 +79,11 @@ export default function ContactPage() {
                         initial={{ scale: 0.9 }}
                         animate={{ scale: 1 }}
                         transition={{ duration: 0.5, delay: 0.2 }}
-                        className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl mb-6 shadow-lg"
+                        className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-sky-400 to-sky-700 rounded-2xl mb-6 shadow-lg"
                     >
                         <FiMail className="w-10 h-10 text-white" />
                     </motion.div>
-                    <h1 className="text-4xl font-extrabold sm:text-5xl sm:tracking-tight lg:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
+                    <h1 className="text-4xl font-extrabold sm:text-5xl sm:tracking-tight lg:text-6xl bg-clip-text text-transparent bg-gradient-to-tr from-sky-400 to-sky-700">
                         Contact Us
                     </h1>
                     <p className="mt-5 max-w-3xl mx-auto text-xl text-gray-600">
@@ -160,7 +170,7 @@ export default function ContactPage() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 disabled={isSubmitting}
-                                className={`w-full flex items-center justify-center px-6 py-4 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 ${isSubmitting ? 'opacity-80 cursor-not-allowed' : ''}`}
+                                className={`w-full flex items-center justify-center px-6 py-4 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-tr from-sky-400 to-sky-700 hover:bg-gradient-to-bl hover:from-sky-400 hover:to-sky-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 ${isSubmitting ? 'opacity-80 cursor-not-allowed' : ''}`}
                             >
                                 {isSubmitting ? (
                                     <span className="flex items-center">
@@ -278,7 +288,7 @@ export default function ContactPage() {
                             <h2 className="text-2xl font-bold text-gray-800 mb-6">Connect With Us</h2>
                             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                                 <motion.a
-                                    href="https://wa.me/923117918605"
+                                    href="https://wa.me/0123456789"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     whileHover={{ y: -5 }}

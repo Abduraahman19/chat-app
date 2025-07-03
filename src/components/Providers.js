@@ -2,18 +2,13 @@
 'use client'
 
 import { AuthContextProvider } from '../context/AuthContext';
-import { useEffect, useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 
 export default function Providers({ children }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null; // or return a loading spinner
-  }
-
-  return <AuthContextProvider>{children}</AuthContextProvider>;
+  return (
+    <AuthContextProvider>
+      <Toaster position="bottom-center" />
+      {children}
+    </AuthContextProvider>
+  );
 }
