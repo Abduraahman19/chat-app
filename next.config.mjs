@@ -1,16 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["firebase"],
+  output: 'export', // ✅ Add this line for static export
+  serverExternalPackages: ['firebase'],
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
   eslint: {
-    ignoreDuringBuilds: true, // Temporary for build
+    ignoreDuringBuilds: true,
   },
   logging: {
     level: 'error',
-    fullUrl: true
-  }
+    fullUrl: true,
+  },
 };
 
 export default nextConfig;
