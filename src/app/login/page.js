@@ -14,28 +14,23 @@ export default function Login() {
   const { logIn, user, loading } = useAuth();
   const router = useRouter();
 
-// Add similar verification check
-useEffect(() => {
-  if (!loading && user) {
-    if (!user.emailVerified) {
-      router.push('/verify-email');
-      return;
-    }
-    const timer = setTimeout(() => {
+  useEffect(() => {
+    if (!loading && user) {
+      // Directly redirect to chat after login
       router.push('/chat');
-    }, 100);
-    return () => clearTimeout(timer);
-  }
-}, [user, loading, router]);
+    }
+  }, [user, loading, router]);
 
+  // Define handleSubmit to handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
       await logIn(email, password);
+      // Success: user will be redirected by useEffect
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
     }

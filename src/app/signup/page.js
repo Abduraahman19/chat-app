@@ -1,5 +1,4 @@
 'use client'
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
@@ -16,38 +15,25 @@ export default function Signup() {
   const { signUp, user, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && user) {
-      // If user just signed up but not verified, stay on verification page
-      if (!user.emailVerified) {
-        router.push('/verify-email');
-        return;
-      }
-      // Only redirect to chat if verified
-      const timer = setTimeout(() => {
-        router.push('/chat');
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [user, loading, router]);
 
-  // In your signup page component
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
-      const result = await signUp(email, password, displayName);
-      if (result?.success) {
-        // Redirect to verification page without logging out
-        router.push('/verify-email');
-      }
+      await signUp(email, password, displayName);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/chat');
+    }
+  }, [user, loading, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50">

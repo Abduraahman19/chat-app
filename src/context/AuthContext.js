@@ -123,31 +123,23 @@ export function AuthContextProvider({ children }) {
       // Update auth profile
       await updateProfile(userCredential.user, { displayName });
 
-      // Send verification email with settings
-      await sendEmailVerification(userCredential.user, {
-        url: `${window.location.origin}/verify-email?newUser=true`,
-        handleCodeInApp: true
-      });
-
       // Create user document in Firestore
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         uid: userCredential.user.uid,
         email: email.toLowerCase().trim(),
         displayName,
-        emailVerified: false,
+        emailVerified: true, // Set to true directly
         createdAt: serverTimestamp(),
         lastSeen: serverTimestamp(),
         status: "Hey there! I'm using ChatApp",
         photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`
       });
 
-      // Return the user without logging out
       return {
         success: true,
         user: userCredential.user,
-        message: 'Verification email sent! Please check your inbox.'
+        message: 'Account created successfully!'
       };
-
     } catch (error) {
       // Cleanup if failed
       if (userCredential?.user) {
@@ -171,19 +163,11 @@ export function AuthContextProvider({ children }) {
     }
   };
 
-
   // Enhanced logIn function
   const logIn = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Check if email is verified
-      if (!user.emailVerified) {
-        // Don't throw error, just redirect to verification
-        router.push('/verify-email');
-        return null;
-      }
 
       // Check/create user document
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -192,7 +176,7 @@ export function AuthContextProvider({ children }) {
           uid: userCredential.user.uid,
           email: userCredential.user.email.toLowerCase().trim(),
           displayName: userCredential.user.displayName || '',
-          emailVerified: userCredential.user.emailVerified,
+          emailVerified: true, // Set to true directly
           createdAt: serverTimestamp(),
           lastSeen: serverTimestamp(),
           status: "Hey there! I'm using ChatApp",
@@ -359,7 +343,7 @@ export function AuthContextProvider({ children }) {
   // };
 
 
-    const addContact = async (email) => {
+  const addContact = async (email) => {
     try {
       if (!user) throw new Error('Authentication required. Please login first.');
 
@@ -395,7 +379,7 @@ export function AuthContextProvider({ children }) {
       );
       const existingChats = await getDocs(existingChatQuery);
 
-      const alreadyExists = existingChats.docs.some(doc => 
+      const alreadyExists = existingChats.docs.some(doc =>
         doc.data().participants.includes(contactId)
       );
 
@@ -458,38 +442,38 @@ export function AuthContextProvider({ children }) {
     }
   };
 
-  // Resend verification email
-  // Enhanced resendVerificationEmail function
-  const resendVerificationEmail = async () => {
-    if (!auth.currentUser) {
-      throw new Error('No user is currently signed in');
-    }
+  // // Resend verification email
+  // // Enhanced resendVerificationEmail function
+  // const resendVerificationEmail = async () => {
+  //   if (!auth.currentUser) {
+  //     throw new Error('No user is currently signed in');
+  //   }
 
-    try {
-      // Force refresh the user token first
-      await auth.currentUser.getIdToken(true);
+  //   try {
+  //     // Force refresh the user token first
+  //     await auth.currentUser.getIdToken(true);
 
-      // Then send verification email with custom settings
-      await sendEmailVerification(auth.currentUser, {
-        url: `${window.location.origin}/verify-email`, // Redirect after verification
-        handleCodeInApp: true // Better for mobile apps
-      });
+  //     // Then send verification email with custom settings
+  //     await sendEmailVerification(auth.currentUser, {
+  //       url: `${window.location.origin}/verify-email`, // Redirect after verification
+  //       handleCodeInApp: true // Better for mobile apps
+  //     });
 
-      return {
-        success: true,
-        message: 'Verification email sent successfully! Check your inbox and spam folder.'
-      };
-    } catch (error) {
-      console.error('Error resending verification email:', error);
+  //     return {
+  //       success: true,
+  //       message: 'Verification email sent successfully! Check your inbox and spam folder.'
+  //     };
+  //   } catch (error) {
+  //     console.error('Error resending verification email:', error);
 
-      let errorMessage = 'Failed to send verification email. Please try again.';
-      if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many requests. Please wait before trying again.';
-      }
+  //     let errorMessage = 'Failed to send verification email. Please try again.';
+  //     if (error.code === 'auth/too-many-requests') {
+  //       errorMessage = 'Too many requests. Please wait before trying again.';
+  //     }
 
-      throw new Error(errorMessage);
-    }
-  };
+  //     throw new Error(errorMessage);
+  //   }
+  // };
 
   // Update user profile
   const updateUserProfile = async (profileData) => {
@@ -529,30 +513,7 @@ export function AuthContextProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // Force refresh user data
-        await currentUser.reload();
-
-        // Check verification status
-        if (!currentUser.emailVerified) {
-          router.push('/verify-email');
-          return;
-        }
-        // Check if document exists
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (!userDoc.exists()) {
-          // Create the document if missing
-          await setDoc(doc(db, 'users', currentUser.uid), {
-            uid: currentUser.uid,
-            email: currentUser.email.toLowerCase().trim(),
-            displayName: currentUser.displayName || '',
-            emailVerified: currentUser.emailVerified,
-            createdAt: serverTimestamp(),
-            lastSeen: serverTimestamp(),
-            status: "Hey there! I'm using ChatApp",
-            photoURL: currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName || 'User')}&background=random`
-          });
-        }
-
+        // No need to check verification status
         await fetchContacts(currentUser.uid);
         // Update presence status
         await updateDoc(doc(db, 'users', currentUser.uid), {
@@ -567,7 +528,8 @@ export function AuthContextProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  return (
+
+ return (
     <AuthContext.Provider value={{
       user,
       loading,
@@ -578,7 +540,6 @@ export function AuthContextProvider({ children }) {
       logOut,
       deleteAccount,
       addContact,
-      resendVerificationEmail,
       updateUserProfile
     }}>
       {children}
