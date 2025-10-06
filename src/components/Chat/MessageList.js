@@ -39,8 +39,14 @@ export const getUsernameFromEmail = (email) => {
   return email.split('@')[0];
 };
 
-export default function MessageList({ messages, onDeleteMessage, isLoading }) {
+export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [] }) {
   const { user } = useAuth();
+  
+  // Helper function to get sender info
+  const getSenderInfo = (senderId) => {
+    if (senderId === user?.uid) return user;
+    return contacts.find(contact => contact.id === senderId) || null;
+  };
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
@@ -185,6 +191,7 @@ export default function MessageList({ messages, onDeleteMessage, isLoading }) {
                     message={message}
                     onDelete={onDeleteMessage}
                     showTime={true}
+                    senderInfo={getSenderInfo(message.senderId)}
                   />
                 </motion.div>
               ))}

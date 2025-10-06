@@ -20,6 +20,11 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
+// Helper function to extract username from email
+const getUsernameFromEmail = (email) => {
+  return email ? email.split('@')[0] : 'User';
+};
+
 export const AuthContext = createContext();
 
 export function AuthContextProvider({ children }) {

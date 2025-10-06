@@ -17,8 +17,8 @@ export function useChat(chatId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const sendMessage = async (text) => {
-    if (!chatId || !text.trim()) return;
+  const sendMessage = async (text, media = null) => {
+    if (!chatId || (!text.trim() && !media)) return;
 
     try {
       if (!auth.currentUser) {
@@ -37,16 +37,28 @@ export function useChat(chatId) {
       // Add client-side timestamp
       const timestamp = new Date();
       
-      await addDoc(collection(db, 'messages'), {
-        text,
+      const messageData = {
+        text: text || '',
         chatId,
         senderId: auth.currentUser.uid,
         createdAt: timestamp,
         timestamp: timestamp.getTime() // For client-side sorting
-      });
+      };
 
+      // Add media if provided
+      if (media) {
+        messageData.media = media;
+      }
+      
+      await addDoc(collection(db, 'messages'), messageData);
+
+      // Update chat with last message info
+      const lastMessageText = media 
+        ? `📎 ${media.type === 'image' ? 'Photo' : media.type === 'video' ? 'Video' : 'File'}` 
+        : text;
+        
       await updateDoc(doc(db, 'chats', chatId), {
-        lastMessage: text,
+        lastMessage: lastMessageText,
         lastMessageAt: timestamp
       });
 

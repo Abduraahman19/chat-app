@@ -2,6 +2,7 @@
 'use client'
 
 import { useAuth } from '../../context/AuthContext';
+import ProfilePicture from '../ProfilePicture';
 
 export default function ContactList({ contacts, activeContact, setActiveContact }) {
   const { user } = useAuth();
@@ -20,9 +21,14 @@ export default function ContactList({ contacts, activeContact, setActiveContact 
               activeContact?.id === contact.id ? 'bg-blue-100' : ''
             }`}
           >
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              <div className='truncate'>
+            <div className="flex items-center space-x-3">
+              <ProfilePicture 
+                user={contact} 
+                size="md" 
+                showOnlineStatus={true}
+                isOnline={contact.isOnline}
+              />
+              <div className='truncate flex-1'>
                 <p className="font-medium text-neutral-600">
                   {contact.displayName || contact.email.split('@')[0]}
                 </p>

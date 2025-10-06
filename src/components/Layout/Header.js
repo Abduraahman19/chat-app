@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import { getUsernameFromEmail } from '../../utils/helpers';
 import { useRouter } from 'next/navigation';
+import ProfilePicture from '../ProfilePicture';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useEffect, useState, useRef } from 'react';
@@ -224,35 +225,13 @@ export default function Header() {
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div className="relative">
-                        {/* Animated Ring */}
-                        <motion.div
-                          animate={{ rotate: isMenuOpen ? 360 : 0 }}
-                          transition={{ duration: 0.5, type: "spring" }}
-                          className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-30 blur-sm"
-                        />
-                        
-                        <motion.div
-                          className="relative w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-xl border-2 border-white/50"
-                          animate={isMenuOpen ? { rotate: 360, scale: 1.1 } : { rotate: 0, scale: 1 }}
-                          transition={{ type: 'spring', stiffness: 300 }}
-                        >
-                          {user?.email?.charAt(0).toUpperCase()}
-                          
-                          {/* Online Status */}
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center"
-                          >
-                            <motion.div
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                              className="w-2 h-2 bg-white rounded-full"
-                            />
-                          </motion.div>
-                        </motion.div>
-                      </div>
+                      <ProfilePicture 
+                        user={user} 
+                        size="md" 
+                        showOnlineStatus={true}
+                        isOnline={true}
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      />
                       
                       <motion.div className="hidden md:flex flex-col items-start">
                         <motion.span

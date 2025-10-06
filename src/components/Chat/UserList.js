@@ -1,4 +1,5 @@
 import { getUsernameFromEmail } from '../../utils/helpers';
+import ProfilePicture from '../ProfilePicture';
 
 export default function UserList({ users }) {
   return (
@@ -6,9 +7,16 @@ export default function UserList({ users }) {
       <h2 className="font-bold text-black text-lg mb-4">Online Users</h2>
       <ul>
         {users.map((user) => (
-          <li key={user.id} className="flex items-center mb-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-            <span>{getUsernameFromEmail(user.email)}</span>
+          <li key={user.id} className="flex items-center mb-3 space-x-3">
+            <ProfilePicture 
+              user={user} 
+              size="sm" 
+              showOnlineStatus={true}
+              isOnline={true}
+            />
+            <span className="font-medium text-gray-700">
+              {user.displayName || getUsernameFromEmail(user.email)}
+            </span>
           </li>
         ))}
       </ul>

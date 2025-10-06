@@ -5,15 +5,18 @@ import { PaperAirplaneIcon, PlusIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { FaSmile, FaTimes } from "react-icons/fa";
+import { FiPaperclip } from 'react-icons/fi';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import MediaUpload from './MediaUpload';
 
 export default function ChatInput({ sendMessage, onNewContact }) {
   const [message, setMessage] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { user, addContact } = useAuth();
   const inputRef = useRef(null);
@@ -92,6 +95,16 @@ export default function ChatInput({ sendMessage, onNewContact }) {
     inputRef.current.focus();
   };
 
+  const handleMediaSelect = async (mediaData, messageText = '') => {
+    try {
+      await sendMessage(messageText, mediaData);
+      toast.success('Media sent successfully!');
+    } catch (error) {
+      console.error('Error sending media:', error);
+      toast.error('Failed to send media');
+    }
+  };
+
   return (
     <div className="p-4 bg-sky-50 border-t border-gray-200 relative">
       <style jsx global>{`
@@ -162,6 +175,7 @@ export default function ChatInput({ sendMessage, onNewContact }) {
             onClick={() => {
               setShowContactForm(!showContactForm);
               setShowEmojiPicker(false);
+              setShowMediaUpload(false);
             }}
             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl p-2 transition-all duration-300 border border-transparent hover:border-indigo-200 flex items-center justify-center w-10 h-10"
             aria-label="Add contact"
@@ -173,7 +187,46 @@ export default function ChatInput({ sendMessage, onNewContact }) {
             whileHover={{ scale: 1.1, rotate: 15 }}
             whileTap={{ scale: 0.95 }}
             type="button"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            onClick={() => {
+              setShowMediaUpload(!showMediaUpload);
+              setShowEmojiPicker(false);
+              setShowContactForm(false);
+            }}
+            className={`relative rounded-xl p-2 transition-all duration-300 border border-transparent overflow-hidden flex items-center justify-center w-10 h-10 ${
+              showMediaUpload 
+                ? 'bg-gradient-to-r from-purple-100 to-indigo-100 border-purple-300 shadow-lg' 
+                : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:border-purple-200 text-purple-600'
+            }`}
+            aria-label="Attach media"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-indigo-400/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+            
+            <motion.div
+              animate={showMediaUpload ? { rotate: [0, 10, -10, 0] } : {}}
+              transition={{ duration: 0.5, repeat: showMediaUpload ? Infinity : 0, repeatDelay: 2 }}
+              className="relative z-10"
+            >
+              <FiPaperclip className="h-5 w-5" />
+            </motion.div>
+            
+            {showMediaUpload && (
+              <motion.div
+                animate={{ x: [-20, 40] }}
+                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+              />
+            )}
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.1, rotate: 15 }}
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            onClick={() => {
+              setShowEmojiPicker(!showEmojiPicker);
+              setShowMediaUpload(false);
+              setShowContactForm(false);
+            }}
             className={`relative rounded-xl p-2 transition-all duration-300 border border-transparent overflow-hidden flex items-center justify-center w-10 h-10 ${
               showEmojiPicker 
                 ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300 shadow-lg' 
@@ -296,6 +349,14 @@ export default function ChatInput({ sendMessage, onNewContact }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Media Upload Modal */}
+      {showMediaUpload && (
+        <MediaUpload
+          onMediaSelect={handleMediaSelect}
+          onClose={() => setShowMediaUpload(false)}
+        />
+      )}
     </div>
   );
 }

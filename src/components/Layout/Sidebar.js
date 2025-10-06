@@ -2,6 +2,7 @@
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import { getUsernameFromEmail } from '../../utils/helpers';
+import ProfilePicture from '../ProfilePicture';
 import { useState, useEffect } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
 import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, getDocs, orderBy, limit } from 'firebase/firestore';
@@ -538,37 +539,13 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                     >
                       <div className="flex items-center space-x-4">
                         {/* Enhanced Avatar */}
-                        <div className="relative">
-                          <motion.div
-                            whileHover={{ scale: 1.1 }}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg ${
-                              isActive 
-                                ? 'bg-white/20 text-white border-2 border-white/30' 
-                                : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
-                            }`}
-                          >
-                            {displayName.charAt(0).toUpperCase()}
-                          </motion.div>
-                          
-                          {/* Online Status Indicator */}
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 ${
-                              isActive ? 'border-white' : 'border-white'
-                            } flex items-center justify-center`}
-                          >
-                            {contactIsOnline ? (
-                              <motion.div
-                                animate={{ scale: [1, 1.2, 1] }}
-                                transition={{ duration: 2, repeat: Infinity }}
-                                className="w-2 h-2 bg-green-500 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-2 h-2 bg-gray-400 rounded-full" />
-                            )}
-                          </motion.div>
-                        </div>
+                        <ProfilePicture 
+                          user={contact} 
+                          size="lg" 
+                          showOnlineStatus={true}
+                          isOnline={contactIsOnline}
+                          className={isActive ? 'opacity-90' : ''}
+                        />
 
                         {/* Contact Info */}
                         <div className="flex-1 min-w-0">
@@ -716,27 +693,12 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
               className="flex items-center space-x-4 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-all duration-300 cursor-pointer border border-indigo-100 hover:border-indigo-200 shadow-sm hover:shadow-md"
             >
               {/* User Avatar */}
-              <div className="relative">
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-lg border-2 border-white"
-                >
-                  {(user.displayName || user.email).charAt(0).toUpperCase()}
-                </motion.div>
-                
-                {/* Online Status */}
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center"
-                >
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="w-2 h-2 bg-white rounded-full"
-                  />
-                </motion.div>
-              </div>
+              <ProfilePicture 
+                user={user} 
+                size="lg" 
+                showOnlineStatus={true}
+                isOnline={true}
+              />
 
               {/* User Info */}
               <div className="flex-1 min-w-0">

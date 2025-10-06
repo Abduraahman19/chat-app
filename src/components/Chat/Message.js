@@ -6,8 +6,10 @@ import { EllipsisVerticalIcon, DocumentDuplicateIcon } from '@heroicons/react/24
 import { motion, AnimatePresence } from 'framer-motion';
 import { Snackbar, Alert } from '@mui/material';
 import { Slide } from '@mui/material';
+import ProfilePicture from '../ProfilePicture';
+import MediaMessage from './MediaMessage';
 
-const Message = ({ message, onDelete, showTime = false }) => {
+const Message = ({ message, onDelete, showTime = false, senderInfo = null }) => {
   const { user } = useAuth();
   const isCurrentUser = message.senderId === user?.uid;
   const [showMenu, setShowMenu] = useState(false);
@@ -100,7 +102,18 @@ const SlideTransition = (props) => {
           }
         }}
       >
-        <div className="flex items-center">
+        <div className="flex items-center space-x-2">
+          {/* Profile picture for received messages */}
+          {!isCurrentUser && senderInfo && (
+            <div className="flex-shrink-0">
+              <ProfilePicture 
+                user={senderInfo} 
+                size="sm" 
+                animate={false}
+              />
+            </div>
+          )}
+          
           {/* Message options menu (three dots) */}
           {isCurrentUser && (
             <AnimatePresence>
@@ -205,9 +218,19 @@ const SlideTransition = (props) => {
             )}
             
             {/* Message content */}
-            <p className="relative z-10 text-sm leading-relaxed break-words whitespace-pre-wrap">
-              {message.text}
-            </p>
+            <div className="relative z-10">
+              {message.media ? (
+                <MediaMessage 
+                  media={message.media} 
+                  isOwn={isCurrentUser} 
+                  messageText={message.text}
+                />
+              ) : (
+                <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                  {message.text}
+                </p>
+              )}
+            </div>
 
             {/* Enhanced Message footer */}
             {showTime && (

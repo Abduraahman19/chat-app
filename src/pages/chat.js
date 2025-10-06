@@ -7,6 +7,7 @@ import MessageList from '../components/Chat/MessageList';
 import ChatInput from '../components/Chat/ChatInput';
 import UnifiedSidebar from '../components/Layout/Sidebar';
 import Header from '../components/Layout/Header';
+import ProfilePicture from '../components/ProfilePicture';
 import { doc, deleteDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { toast } from 'react-hot-toast';
@@ -156,33 +157,12 @@ export default function Chat() {
 
                 <div className="relative z-10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      {/* Enhanced Avatar */}
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        className="relative"
-                      >
-                        <div className="flex items-center justify-center w-12 h-12 font-bold text-white border-2 rounded-full shadow-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 border-white/50">
-                          {activeContact.email.charAt(0).toUpperCase()}
-                        </div>
-
-                        {/* Online Status with Animation */}
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${isOnline(activeContact.id) ? 'bg-green-500' : 'bg-gray-400'
-                            }`}
-                        >
-                          {isOnline(activeContact.id) && (
-                            <motion.div
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                              className="w-2 h-2 bg-white rounded-full"
-                            />
-                          )}
-                        </motion.div>
-                      </motion.div>
-                    </div>
+                    <ProfilePicture 
+                      user={activeContact} 
+                      size="lg" 
+                      showOnlineStatus={true}
+                      isOnline={isOnline(activeContact.id)}
+                    />
 
                     <div className="flex-1 min-w-0">
                       <motion.h2
@@ -240,6 +220,7 @@ export default function Chat() {
                   !user?.deletedMessages?.includes(msg.id)
                 )}
                 onDeleteMessage={handleDeleteMessage}
+                contacts={[...contacts, { id: user?.uid, ...user }]}
               />
 
               <ChatInput
