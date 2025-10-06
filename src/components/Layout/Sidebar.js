@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { getUsernameFromEmail } from '../../utils/helpers';
 import { useState, useEffect } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
-import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
-import { motion } from 'framer-motion';
-import { FiX, FiSearch, FiMoreVertical, FiEdit, FiCheck } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiX, FiSearch, FiMoreVertical, FiEdit, FiCheck, FiPlus, FiUsers, FiMessageCircle, FiUser, FiClock, FiWifi, FiWifiOff } from 'react-icons/fi';
 
 export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   const { user, contacts, addContact } = useAuth();
@@ -25,15 +25,36 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   const [editingContactId, setEditingContactId] = useState(null);
   const [editedContactName, setEditedContactName] = useState('');
   const [contactCustomNames, setContactCustomNames] = useState({});
+  const [isAddingContact, setIsAddingContact] = useState(false);
+  const [lastMessageTimes, setLastMessageTimes] = useState({});
 
-  // Filter contacts based on search query
-  const filteredContacts = contacts.filter(contact => {
-    const searchLower = searchQuery.toLowerCase();
-    const displayName = contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email);
-    return (
-      contact.email.toLowerCase().includes(searchLower) ||
-      displayName.toLowerCase().includes(searchLower))
-  });
+  // Filter and sort contacts - sort by last message time, then alphabetically
+  const filteredContacts = contacts
+    .filter(contact => {
+      const searchLower = searchQuery.toLowerCase();
+      const displayName = contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email);
+      return (
+        contact.email.toLowerCase().includes(searchLower) ||
+        displayName.toLowerCase().includes(searchLower))
+    })
+    .sort((a, b) => {
+      // Sort by last message time (most recent first), then alphabetically
+      const lastMessageA = lastMessageTimes[a.id] || 0;
+      const lastMessageB = lastMessageTimes[b.id] || 0;
+      
+      console.log(`Sorting: ${a.email} (${new Date(lastMessageA)}) vs ${b.email} (${new Date(lastMessageB)})`);
+      
+      if (lastMessageA !== lastMessageB) {
+        const result = lastMessageB - lastMessageA; // Most recent first
+        console.log(`Sort result: ${result}`);
+        return result;
+      }
+      
+      // If no messages or same time, sort alphabetically
+      const nameA = (contactCustomNames[a.id] || a.displayName || getUsernameFromEmail(a.email)).toLowerCase();
+      const nameB = (contactCustomNames[b.id] || b.displayName || getUsernameFromEmail(b.email)).toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
   // Load saved contact names
   useEffect(() => {
@@ -122,6 +143,48 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
     return () => unsubscribes.forEach(unsubscribe => unsubscribe());
   }, [contacts]);
 
+  // Track last message times for each contact
+  useEffect(() => {
+    if (!user?.uid || !contacts.length) return;
+
+    const unsubscribes = [];
+
+    contacts.forEach(contact => {
+      const chatId = [user.uid, contact.id].sort().join('_');
+      const messagesRef = collection(db, 'chats', chatId, 'messages');
+      const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+
+      const unsubscribe = onSnapshot(q,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const lastMessage = snapshot.docs[0].data();
+            const timestamp = lastMessage.timestamp?.toDate ? lastMessage.timestamp.toDate().getTime() : Date.now();
+            
+            console.log(`Last message time for ${contact.email}:`, new Date(timestamp));
+            
+            setLastMessageTimes(prev => {
+              const updated = {
+                ...prev,
+                [contact.id]: timestamp
+              };
+              console.log('Updated lastMessageTimes:', updated);
+              return updated;
+            });
+          } else {
+            console.log(`No messages found for ${contact.email}`);
+          }
+        },
+        (error) => {
+          console.error("Error fetching last message:", error);
+        }
+      );
+
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => unsubscribes.forEach(unsubscribe => unsubscribe());
+  }, [contacts, user?.uid]);
+
   const isOnline = (contactId) => {
     if (!contactId) return false;
     const timestamp = lastSeen[contactId];
@@ -191,6 +254,7 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
       return;
     }
 
+    setIsAddingContact(true);
     try {
       await addContact(newContactEmail);
 
@@ -234,6 +298,8 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
         message: userMessage,
         severity: 'error'
       });
+    } finally {
+      setIsAddingContact(false);
     }
   };
 
@@ -243,6 +309,12 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
 
   const handleContactClick = async (contact) => {
     setActiveContact(contact);
+
+    // Update last interaction time for sorting
+    setLastMessageTimes(prev => ({
+      ...prev,
+      [contact.id]: Date.now()
+    }));
 
     // Mark messages as read when contact is selected
     if (unreadCounts[contact.id] > 0) {
@@ -275,27 +347,28 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
     setEditedContactName(contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email));
   };
 
-  const handleSaveName = async (contactId) => {
+  const handleSaveEdit = async (contactId) => {
     try {
-      setContactCustomNames(prev => ({
-        ...prev,
-        [contactId]: editedContactName
-      }));
-      setEditingContactId(null);
-
-      // Save to Firebase
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
         [`contactNames.${contactId}`]: editedContactName
       });
-
+      
+      setContactCustomNames(prev => ({
+        ...prev,
+        [contactId]: editedContactName
+      }));
+      
+      setEditingContactId(null);
+      setEditedContactName('');
+      
       setSnackbar({
         open: true,
-        message: 'Contact name updated!',
+        message: 'Contact name updated successfully!',
         severity: 'success'
       });
     } catch (error) {
-      console.error("Error updating contact name:", error);
+      console.error('Error updating contact name:', error);
       setSnackbar({
         open: true,
         message: 'Failed to update contact name',
@@ -310,303 +383,550 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   };
 
   return (
-    <div className="w-80 bg-sky-50 border-r border-gray-300 flex flex-col h-full">
-      {/* Navigation Section */}
-      <div className="p-4 border-b border-gray-300">
-        <h2 className="font-bold text-gray-800 text-lg mb-3">Navigation</h2>
-        <nav className="space-y-2">
-          <Link
-            href="/profile"
-            className="flex items-center px-4 py-2 text-gray-700 hover:bg-sky-100 border border-transparent hover:border-sky-200 hover:ring-1 hover:ring-sky-200 rounded-lg transition-all duration-200"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Profile
-          </Link>
-        </nav>
-      </div>
-
-      {/* Contacts Section */}
-      <div className="p-4 border-b border-gray-300 flex justify-between items-center">
-        <div className="flex items-center">
-          <h2 className="font-bold text-gray-800 text-lg">Contacts</h2>
-          <span className="bg-sky-200 text-sky-700 text-xs font-medium px-2 py-0.5 rounded-full ml-2">
-            {filteredContacts.length}/{contacts.length}
-          </span>
-        </div>
-        <button
-          onClick={() => setShowAddContactModal(true)}
-          className="text-sky-600 hover:text-sky-500 text-sm font-medium"
-        >
-          + Add Contact
-        </button>
-      </div>
-
-      {/* Search Bar Section */}
-      <div className="p-2 border-b border-gray-300 from-sky-50">
-        {contacts.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-sm text-gray-500 pl-2 pb-1"
-          >
-            {searchQuery ? (
-              <span>
-                Showing <span className="font-medium text-blue-600">{filteredContacts.length}</span> of{' '}
-                <span className="font-medium">{contacts.length}</span> contacts
-              </span>
-            ) : (
-              <span className="font-medium">{contacts.length} contacts</span>
-            )}
-          </motion.div>
-        )}
+    <div className="h-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden flex flex-col">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          animate={{ 
+            x: [0, 50, 0],
+            y: [0, -30, 0],
+            rotate: [0, 180, 360]
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="absolute top-5 right-5 w-20 h-20 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-xl"
+        />
+        <motion.div
+          animate={{ 
+            x: [0, -40, 0],
+            y: [0, 60, 0],
+            rotate: [360, 180, 0]
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-10 left-5 w-24 h-24 bg-gradient-to-br from-blue-200/20 to-cyan-200/20 rounded-full blur-xl"
+        />
+      </div>
+
+      {/* Header Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 p-6 border-b border-gray-200/50 backdrop-blur-sm bg-white/70"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <motion.h2 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center"
+          >
+            <motion.div
+              whileHover={{ rotate: 360, scale: 1.2 }}
+              transition={{ duration: 0.5 }}
+              className="mr-3 p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg text-white shadow-lg"
+            >
+              <FiUsers size={20} />
+            </motion.div>
+            Contacts
+          </motion.h2>
+          
+          <motion.button
+            whileHover={{ scale: 1.1, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowAddContactModal(true)}
+            className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20"
+          >
+            <FiPlus size={18} />
+          </motion.button>
+        </div>
+
+        {/* Enhanced Search Bar */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
           className="relative"
         >
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiSearch className="text-gray-400 transition-colors duration-200 group-focus-within:text-blue-500" />
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <motion.div
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            >
+              <FiSearch className="h-5 w-5 text-gray-400" />
+            </motion.div>
           </div>
-
           <input
             type="text"
             placeholder="Search contacts..."
-            className="block w-full pl-5 pr-5 py-1.5 border text-gray-700 border-gray-200 rounded-full bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 focus:outline-none focus:shadow-lg"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition-all duration-300 shadow-sm text-gray-700 placeholder-gray-400"
           />
           {searchQuery && (
             <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.2 }}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center group"
-              aria-label="Clear search"
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
             >
-              <FiX className="text-gray-400 hover:text-rose-500 transition-colors duration-200 transform hover:scale-110" />
+              <FiX size={18} />
             </motion.button>
           )}
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Contacts List */}
-      <div className="flex-1 overflow-y-auto [-ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
-        {filteredContacts.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
-            {contacts.length === 0
-              ? "No contacts yet. Add some friends to start chatting!"
-              : "No contacts match your search"}
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-200">
-            {filteredContacts.map((contact) => (
-              <motion.li
-                key={contact.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className={`p-3 cursor-pointer hover:bg-sky-100 transition-colors ${activeContact?.id === contact.id ? 'bg-sky-100' : ''}`}
-                onClick={() => handleContactClick(contact)} // Move the click handler here
+      <div className="flex-1 overflow-y-auto relative z-10 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <AnimatePresence>
+          {filteredContacts.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex flex-col items-center justify-center h-64 text-gray-500"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mb-4"
               >
-                <div className="flex items-center">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 to-sky-700 flex items-center justify-center text-white font-medium mr-3">
-                      {contact.email.charAt(0).toUpperCase()}
-                    </div>
-                    <div className={`absolute bottom-0 right-2 w-3 h-3 rounded-full border-2 border-white ${isOnline(contact.id) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline">
-                      <div className="flex-col truncate relative">
-                        {editingContactId === contact.id ? (
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={editedContactName}
-                              onChange={(e) => setEditedContactName(e.target.value)}
-                              className="w-full px-2 py-1 pr-10 border-b border-gray-300 text-gray-700 focus:border-blue-500 outline-none bg-transparent"
-                              autoFocus
-                            />
-                            <div className="absolute -right-1 top-0 flex">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSaveName(contact.id);
-                                }}
-                                className="text-green-500 hover:text-green-700 p-1"
-                              >
-                                <FiCheck size={16} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelEdit();
-                                }}
-                                className="text-gray-500 hover:text-gray-700 p-1"
-                              >
-                                <FiX size={16} />
-                              </button>
-                            </div>
+                <FiUsers size={24} className="text-gray-400" />
+              </motion.div>
+              <p className="text-lg font-medium">No contacts found</p>
+              <p className="text-sm text-gray-400 mt-1">Add some contacts to start chatting</p>
+            </motion.div>
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="p-2"
+            >
+              {filteredContacts.map((contact, index) => {
+                const displayName = contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email);
+                const isActive = activeContact?.id === contact.id;
+                const unreadCount = unreadCounts[contact.id] || 0;
+                const contactIsOnline = isOnline(contact.id);
+                const lastSeenText = formatLastSeen(lastSeen[contact.id]);
+                const contactStatus = statuses[contact.id] || "Hey there! I'm using ChatApp";
+
+                return (
+                  <motion.div
+                    key={contact.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02, x: 5 }}
+                    className={`relative mb-2 rounded-xl transition-all duration-300 overflow-hidden ${
+                      isActive 
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-xl' 
+                        : 'bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-lg border border-gray-200/50'
+                    }`}
+                  >
+                    {/* Shine Effect for Active Contact */}
+                    {isActive && (
+                      <motion.div
+                        animate={{ x: [-100, 300] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                      />
+                    )}
+                    
+                    <div 
+                      onClick={() => handleContactClick(contact)}
+                      className="p-4 cursor-pointer relative z-10"
+                    >
+                      <div className="flex items-center space-x-4">
+                        {/* Enhanced Avatar */}
+                        <div className="relative">
+                          <motion.div
+                            whileHover={{ scale: 1.1 }}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg ${
+                              isActive 
+                                ? 'bg-white/20 text-white border-2 border-white/30' 
+                                : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
+                            }`}
+                          >
+                            {displayName.charAt(0).toUpperCase()}
+                          </motion.div>
+                          
+                          {/* Online Status Indicator */}
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 ${
+                              isActive ? 'border-white' : 'border-white'
+                            } flex items-center justify-center`}
+                          >
+                            {contactIsOnline ? (
+                              <motion.div
+                                animate={{ scale: [1, 1.2, 1] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="w-2 h-2 bg-green-500 rounded-full"
+                              />
+                            ) : (
+                              <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                            )}
+                          </motion.div>
+                        </div>
+
+                        {/* Contact Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            {editingContactId === contact.id ? (
+                              <div className="flex items-center space-x-2 flex-1">
+                                <input
+                                  type="text"
+                                  value={editedContactName}
+                                  onChange={(e) => setEditedContactName(e.target.value)}
+                                  className={`flex-1 px-2 py-1 rounded border text-sm ${
+                                    isActive 
+                                      ? 'bg-white/20 border-white/30 text-white placeholder-white/70' 
+                                      : 'bg-gray-50 border-gray-200 text-gray-800'
+                                  }`}
+                                  placeholder="Enter contact name"
+                                  autoFocus
+                                />
+                                <motion.button
+                                  whileHover={{ scale: 1.15, rotate: 5 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => handleSaveEdit(contact.id)}
+                                  className={`p-2 rounded-lg transition-all duration-200 ${
+                                    isActive 
+                                      ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300 hover:text-green-200 border border-green-400/30' 
+                                      : 'bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700 border border-green-200 shadow-sm hover:shadow-md'
+                                  }`}
+                                >
+                                  <FiCheck size={16} />
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.15, rotate: -5 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={handleCancelEdit}
+                                  className={`p-2 rounded-lg transition-all duration-200 ${
+                                    isActive 
+                                      ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-400/30' 
+                                      : 'bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 border border-red-200 shadow-sm hover:shadow-md'
+                                  }`}
+                                >
+                                  <FiX size={16} />
+                                </motion.button>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex-1 min-w-0">
+                                  <motion.h3 
+                                    whileHover={{ x: 2 }}
+                                    className={`font-semibold truncate ${
+                                      isActive ? 'text-white' : 'text-gray-800'
+                                    }`}
+                                  >
+                                    {displayName}
+                                  </motion.h3>
+                                  <motion.p 
+                                    initial={{ opacity: 0.7 }}
+                                    animate={{ opacity: 1 }}
+                                    className={`text-sm truncate flex items-center ${
+                                      isActive ? 'text-white/80' : 'text-gray-500'
+                                    }`}
+                                  >
+                                    {contactIsOnline ? (
+                                      <>
+                                        <FiWifi size={12} className="mr-1" />
+                                        Online
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FiClock size={12} className="mr-1" />
+                                        {lastSeenText}
+                                      </>
+                                    )}
+                                  </motion.p>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                  {/* Unread Count Badge */}
+                                  {unreadCount > 0 && (
+                                    <motion.div
+                                      initial={{ scale: 0 }}
+                                      animate={{ scale: 1 }}
+                                      whileHover={{ scale: 1.1 }}
+                                      className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg"
+                                    >
+                                      {unreadCount > 99 ? '99+' : unreadCount}
+                                    </motion.div>
+                                  )}
+                                  
+                                  {/* Edit Button */}
+                                  <motion.button
+                                    whileHover={{ scale: 1.1, rotate: 5 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditClick(contact);
+                                    }}
+                                    className={`p-1.5 rounded-lg transition-colors ${
+                                      isActive 
+                                        ? 'hover:bg-white/20 text-white/80' 
+                                        : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                                    }`}
+                                  >
+                                    <FiEdit size={14} />
+                                  </motion.button>
+                                </div>
+                              </>
+                            )}
                           </div>
-                        ) : (
-                          <p className="font-semibold text-gray-900 truncate">
-                            {contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email)}
-                          </p>
-                        )}
-                        <p className='text-gray-700 text-sm truncate'>{contact.email}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {unreadCounts[contact.id] > 0 && (
-                          <span className="bg-green-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ml-2">
-                            {unreadCounts[contact.id]}
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditClick(contact);
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200"
-                        >
-                          <FiMoreVertical size={16} />
-                        </button>
+                          
+                          {/* Contact Status */}
+                          {!editingContactId && (
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 0.7 }}
+                              className={`text-xs mt-1 truncate ${
+                                isActive ? 'text-white/70' : 'text-gray-400'
+                              }`}
+                            >
+                              {contactStatus}
+                            </motion.p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <p className="text-sm text-gray-500 truncate max-w-[180px]">
-                        {statuses[contact.id] || "Hey there! I'm using ChatApp"}
-                      </p>
-                      <div className="flex items-center space-x-1">
-                        {isOnline(contact.id) ? (
-                          <span className="text-xs text-green-500">Online</span>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            {formatLastSeen(lastSeen[contact.id])}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.li>
-            ))}
-          </ul>
-        )}
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* User Profile Section */}
+      {/* Fixed User Profile Section */}
       {user && (
-        <div className="p-4 border-t border-gray-300 bg-sky-50">
-          <div className="flex items-center">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 to-sky-700 flex items-center justify-center text-white font-medium mr-3">
-                {user.email.charAt(0).toUpperCase()}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="relative z-10 p-4 border-t border-gray-200/50 backdrop-blur-sm bg-white/70 flex-shrink-0"
+        >
+          <Link href="/profile">
+            <motion.div 
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center space-x-4 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-all duration-300 cursor-pointer border border-indigo-100 hover:border-indigo-200 shadow-sm hover:shadow-md"
+            >
+              {/* User Avatar */}
+              <div className="relative">
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-lg border-2 border-white"
+                >
+                  {(user.displayName || user.email).charAt(0).toUpperCase()}
+                </motion.div>
+                
+                {/* Online Status */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center"
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-2 h-2 bg-white rounded-full"
+                  />
+                </motion.div>
               </div>
-              <div className={`absolute bottom-0 right-2 w-3 h-3 rounded-full border-2 border-white ${isOnline(user.uid) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">
-                {user.displayName || getUsernameFromEmail(user.email)}
-              </p>
-              <p className="text-sm text-gray-500 truncate">
-                {user.email}
-              </p>
-            </div>
-          </div>
-        </div>
+
+              {/* User Info */}
+              <div className="flex-1 min-w-0">
+                <motion.h3 
+                  whileHover={{ x: 2 }}
+                  className="font-semibold text-gray-800 truncate"
+                >
+                  {user.displayName || getUsernameFromEmail(user.email)}
+                </motion.h3>
+                <motion.p 
+                  initial={{ opacity: 0.7 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-gray-500 truncate flex items-center"
+                >
+                  <FiUser size={12} className="mr-1" />
+                  {user.email}
+                </motion.p>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.6 }}
+                  className="text-xs text-indigo-600 font-medium mt-1"
+                >
+                  View Profile →
+                </motion.p>
+              </div>
+            </motion.div>
+          </Link>
+        </motion.div>
       )}
 
-      {/* Add Contact Modal */}
-      {showAddContactModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50">
+      {/* Enhanced Add Contact Modal */}
+      <AnimatePresence>
+        {showAddContactModal && (
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-lg p-6 w-full max-w-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowAddContactModal(false)}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Add New Contact</h3>
-              <button
-                onClick={() => {
-                  setShowAddContactModal(false);
-                  setNewContactEmail('');
-                  setEditedContactName('');
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleAddContact}>
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address*
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={newContactEmail}
-                  onChange={(e) => setNewContactEmail(e.target.value)}
-                  className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter contact's email"
-                  required
-                  autoFocus
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Custom Name (optional)
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={editedContactName}
-                  onChange={(e) => setEditedContactName(e.target.value)}
-                  className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter a custom name"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddContactModal(false);
-                    setNewContactEmail('');
-                    setEditedContactName('');
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 w-full max-w-md shadow-2xl border border-white/50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between mb-6">
+                <motion.h3 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                >
+                  <motion.div
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
+                    className="mr-3 p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg text-white shadow-lg"
+                  >
+                    <FiUser size={18} />
+                  </motion.div>
                   Add Contact
-                </button>
+                </motion.h3>
+                
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowAddContactModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                >
+                  <FiX size={20} />
+                </motion.button>
               </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
 
-      {/* Snackbar for notifications */}
+              {/* Modal Form */}
+              <form onSubmit={handleAddContact} className="space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={newContactEmail}
+                    onChange={(e) => setNewContactEmail(e.target.value)}
+                    placeholder="Enter email address"
+                    className="w-full px-4 py-3 bg-gray-50/50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition-all duration-300 text-gray-700"
+                    required
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Display Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editedContactName}
+                    onChange={(e) => setEditedContactName(e.target.value)}
+                    placeholder="Enter custom name"
+                    className="w-full px-4 py-3 bg-gray-50/50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition-all duration-300 text-gray-700"
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="flex space-x-3 pt-4"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={() => setShowAddContactModal(false)}
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-300 border border-gray-200"
+                  >
+                    Cancel
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: isAddingContact ? 1 : 1.02, y: isAddingContact ? 0 : -2 }}
+                    whileTap={{ scale: isAddingContact ? 1 : 0.98 }}
+                    type="submit"
+                    disabled={isAddingContact}
+                    className={`flex-1 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl border border-white/20 relative overflow-hidden ${isAddingContact ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  >
+                    {/* Shine Effect */}
+                    {!isAddingContact && (
+                      <motion.div
+                        animate={{ x: [-100, 200] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                      />
+                    )}
+                    
+                    <span className="relative z-10 flex items-center justify-center">
+                      {isAddingContact ? (
+                        <>
+                          <motion.svg 
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="-ml-1 mr-3 h-5 w-5 text-white" 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            fill="none" 
+                            viewBox="0 0 24 24"
+                          >
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </motion.svg>
+                          Adding...
+                        </>
+                      ) : (
+                        'Add Contact'
+                      )}
+                    </span>
+                  </motion.button>
+                </motion.div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Enhanced Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
+        <Alert 
+          onClose={handleCloseSnackbar} 
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%',
+            borderRadius: '12px',
+            backdropFilter: 'blur(10px)',
+            backgroundColor: snackbar.severity === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+            color: 'white',
+            fontWeight: 600
+          }}
         >
           {snackbar.message}
         </Alert>

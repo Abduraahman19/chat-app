@@ -112,56 +112,70 @@ const SlideTransition = (props) => {
                   transition={{ duration: 0.2 }}
                   className="relative"
                 >
-                  <button
+                  <motion.button
                     ref={buttonRef}
-                    className="mr-2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-1 shadow-sm transition-all duration-200 hover:shadow-md"
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-2 mr-2 text-indigo-600 transition-all duration-300 border rounded-full shadow-lg bg-gradient-to-r from-indigo-100 to-purple-100 hover:from-indigo-200 hover:to-purple-200 border-indigo-200/50 backdrop-blur-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowDeleteOptions(!showDeleteOptions);
                     }}
                   >
-                    <EllipsisVerticalIcon className="h-4 w-4" />
-                  </button>
+                    <EllipsisVerticalIcon className="w-4 h-4" />
+                  </motion.button>
 
                   {/* Message options dropdown */}
                   <AnimatePresence>
                     {showDeleteOptions && (
                       <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
                         ref={menuRef}
-                        className="absolute right-full top-0 mr-1 w-48 bg-white/90 backdrop-blur-md rounded-lg shadow-xl z-10 border border-gray-200 overflow-hidden"
+                        className="absolute top-0 z-20 mr-2 overflow-hidden border shadow-2xl right-full w-52 bg-white/95 backdrop-blur-xl rounded-2xl border-white/50"
                       >
-                        <button
-                          onClick={handleCopy}
-                          className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-cyan-100/50 transition-colors duration-150 flex items-center"
-                        >
-                          <DocumentDuplicateIcon className="h-4 w-4 mr-2" />
-                          Copy message
-                        </button>
-                        <div className="border-t border-gray-200">
-                          <button
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-50/50 via-transparent to-purple-50/50" />
+                        
+                        <div className="relative z-10">
+                          <motion.button
+                            whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handleCopy}
+                            className="flex items-center w-full px-4 py-3 text-sm font-medium text-left text-gray-700 transition-all duration-200 border-b hover:bg-indigo-50 border-gray-100/50"
+                          >
+                            <DocumentDuplicateIcon className="w-4 h-4 mr-3 text-indigo-500" />
+                            Copy message
+                          </motion.button>
+                          
+                          <motion.button
+                            whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => handleDelete(false)}
-                            className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-cyan-100/50 transition-colors duration-150"
+                            className="w-full px-4 py-3 text-sm font-medium text-left text-gray-700 transition-all duration-200 border-b hover:bg-indigo-50 border-gray-100/50"
                           >
                             Delete for me
-                          </button>
-                          <button
+                          </motion.button>
+                          
+                          <motion.button
+                            whileHover={{ x: 2, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => handleDelete(true)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 font-medium hover:bg-cyan-100/50 transition-colors duration-150"
+                            className="w-full px-4 py-3 text-sm font-medium text-left text-red-600 transition-all duration-200 border-b hover:bg-red-50 border-gray-100/50"
                           >
                             Delete for everyone
-                          </button>
-                        </div>
-                        <div className="border-t border-gray-200">
-                          <button
+                          </motion.button>
+                          
+                          <motion.button
+                            whileHover={{ x: 2, backgroundColor: 'rgba(156, 163, 175, 0.1)' }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setShowDeleteOptions(false)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-cyan-100/50 transition-colors duration-150 font-medium"
+                            className="w-full px-4 py-3 text-sm font-medium text-left text-gray-500 transition-all duration-200 hover:bg-gray-50"
                           >
                             Cancel
-                          </button>
+                          </motion.button>
                         </div>
                       </motion.div>
                     )}
@@ -171,40 +185,63 @@ const SlideTransition = (props) => {
             </AnimatePresence>
           )}
 
-          {/* Message bubble */}
+          {/* Enhanced Message bubble */}
           <motion.div
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
-            className={`relative max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${isCurrentUser
-              ? 'bg-[#DEF6C8] text-black rounded-tr-none'
-              : 'bg-white text-black rounded-tl-none'
-              } shadow-md transition-all duration-200`}
+            className={`relative max-w-xs lg:max-w-md px-4 py-3 rounded-2xl backdrop-blur-sm border shadow-lg transition-all duration-300 overflow-hidden ${
+              isCurrentUser
+                ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-md border-indigo-300/30'
+                : 'bg-white/90 text-gray-800 rounded-tl-md border-gray-200/50'
+            }`}
           >
+            {/* Shine Effect for sent messages */}
+            {isCurrentUser && (
+              <motion.div
+                animate={{ x: [-100, 200] }}
+                transition={{ duration: 3, repeat: Infinity, repeatDelay: 8 }}
+                className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+              />
+            )}
+            
             {/* Message content */}
-            <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+            <p className="relative z-10 text-sm leading-relaxed break-words whitespace-pre-wrap">
+              {message.text}
+            </p>
 
-            {/* Message footer with time and status */}
+            {/* Enhanced Message footer */}
             {showTime && (
-              <div
-                className={`flex items-center justify-between mt-1 ${isCurrentUser ? 'text-[#a7b6b2]' : 'text-[#a7b6b2]'
-                  }`}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="relative z-10 flex items-center justify-between pt-1 mt-2"
               >
-                {/* Time on left */}
-                <span className="text-xs text-gray-500">
+                {/* Time */}
+                <span className={`text-xs font-medium ${
+                  isCurrentUser ? 'text-white/80' : 'text-gray-500'
+                }`}>
                   {formatTime(message.createdAt)}
                 </span>
 
-                {/* Double check on right */}
+                {/* Enhanced status indicator */}
                 {isCurrentUser && (
-                  <motion.span
-                    initial={{ opacity: 0, x: 5 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="ml-1 text-blue-600"
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3, type: "spring", stiffness: 300 }}
+                    className="flex items-center ml-2"
                   >
-                    <RiCheckDoubleLine />
-                  </motion.span>
+                    <motion.span
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
+                      className="text-white/90"
+                    >
+                      <RiCheckDoubleLine className="text-sm" />
+                    </motion.span>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
             )}
           </motion.div>
         </div>

@@ -3,26 +3,18 @@ import { FiUsers, FiGlobe, FiHeart, FiAward, FiMessageSquare, FiCode, FiGlobe as
 import { FaRegComments, FaHandshake, FaLightbulb } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import dynamic from 'next/dynamic'
+import Header from '../../components/Layout/Header';
+import Footer from '../../components/Layout/Footer';
 import Image from 'next/image';
-
-// Dynamically import components that might cause HMR issues
-const Header = dynamic(() => import('@/components/Layout/Header'), {
-  ssr: false,
-  loading: () => <div className="h-[62px] bg-sky-50"></div>
-})
-
-const Footer = dynamic(() => import('@/components/Layout/Footer'), {
-  ssr: false,
-  loading: () => null
-})
+import { useState, useEffect } from 'react'
+import PageLoader from '../../components/Layout/PageLoader'
 
 
 const stats = [
-  { id: 1, name: 'Active Users', value: '10,000+', icon: <FiUsers className="h-8 w-8" />, color: 'text-sky-300' },
-  { id: 2, name: 'Countries', value: '150+', icon: <FiGlobe className="h-8 w-8" />, color: 'text-indigo-600' },
-  { id: 3, name: 'Customer Satisfaction', value: '98%', icon: <FiHeart className="h-8 w-8" />, color: 'text-rose-500' },
-  { id: 4, name: 'Awards Won', value: '12', icon: <FiAward className="h-8 w-8" />, color: 'text-amber-500' },
+  { id: 1, name: 'Active Users', value: '10,000+', icon: <FiUsers className="h-8 w-8" />, color: 'text-white' },
+  { id: 2, name: 'Countries', value: '150+', icon: <FiGlobe className="h-8 w-8" />, color: 'text-white' },
+  { id: 3, name: 'Customer Satisfaction', value: '98%', icon: <FiHeart className="h-8 w-8" />, color: 'text-white' },
+  { id: 4, name: 'Awards Won', value: '12', icon: <FiAward className="h-8 w-8" />, color: 'text-white' },
 ];
 
 const teamMembers = [
@@ -53,18 +45,59 @@ const teamMembers = [
 ];
 
 export default function About() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 850)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (!mounted) {
+    return <PageLoader />
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{ 
+            x: [0, 100, 0],
+            y: [0, -50, 0],
+            rotate: [0, 360]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute top-20 right-20 w-64 h-64 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{ 
+            x: [0, -80, 0],
+            y: [0, 60, 0],
+            rotate: [360, 0]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-20 left-20 w-48 h-48 bg-gradient-to-br from-blue-200/20 to-cyan-200/20 rounded-full blur-2xl"
+        />
+      </div>
+
       <Header />
 
-      <main>
-        {/* Hero Section */}
+      <main className="relative z-10">
+        {/* Enhanced Hero Section */}
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
-          className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 lg:pt-32 lg:pb-48 bg-gradient-to-r from-sky-500 to-sky-700"
+          className="relative pt-20 pb-32 sm:pt-32 sm:pb-40 lg:pt-40 lg:pb-56 bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 overflow-hidden"
         >
+          {/* Hero Background Animation */}
+          <div className="absolute inset-0 overflow-hidden">
+            <motion.div
+              animate={{ x: [-100, 200] }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+            />
+          </div>
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-[url('/pattern.svg')] bg-repeat"></div>
           </div>
@@ -78,17 +111,36 @@ export default function About() {
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
+                whileHover={{ scale: 1.1, rotate: 360 }}
                 transition={{ type: "spring", stiffness: 200 }}
-                className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-6 shadow-lg"
+                className="relative inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-8 shadow-2xl border-2 border-white/30 overflow-hidden"
               >
-                <FaRegComments className="w-8 h-8 text-sky-600" />
+                {/* Icon Shine Effect */}
+                <motion.div
+                  animate={{ x: [-50, 100] }}
+                  transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                />
+                <FaRegComments className="w-10 h-10 text-white relative z-10" />
               </motion.div>
-              <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Our <span className="text-sky-200">Story</span>
-              </h1>
-              <p className="mt-6 max-w-3xl mx-auto text-xl text-sky-100">
-                Connecting people across the globe since 2018 with secure, intuitive communication solutions.
-              </p>
+              
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl mb-6"
+              >
+                Our <span className="text-indigo-200">Story</span>
+              </motion.h1>
+              
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mt-8 max-w-4xl mx-auto text-xl text-indigo-100 leading-relaxed"
+              >
+                Connecting people across the globe since 2018 with secure, intuitive communication solutions that bring the world closer together.
+              </motion.p>
             </motion.div>
           </div>
         </motion.section>
@@ -110,11 +162,11 @@ export default function About() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.6 }}
                 >
-                  <span className="inline-block bg-sky-100 text-sky-600 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                  <span className="inline-block bg-indigo-100 text-indigo-600 px-4 py-2 rounded-full text-sm font-medium mb-6 shadow-sm">
                     Our Purpose
                   </span>
-                  <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-                    Redefining <span className="text-sky-600">Digital Communication</span>
+                  <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl mb-6">
+                    Redefining <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Digital Communication</span>
                   </h2>
                   <motion.p
                     initial={{ opacity: 0 }}
@@ -132,15 +184,27 @@ export default function About() {
                     transition={{ delay: 0.4 }}
                     className="mt-8 flex flex-wrap gap-4"
                   >
-                    <Link
-                      href="#"
-                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-tr hover:bg-gradient-to-bl from-sky-400 to-sky-700 hover:from-sky-400 hover:to-sky-700 hover:shadow-xl shadow-sm transition-all duration-300"
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      Join Our Community
-                    </Link>
+                      <Link
+                        href="/signup"
+                        className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl shadow-lg text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600 hover:shadow-2xl transition-all duration-300 relative overflow-hidden"
+                      >
+                        {/* Button Shine Effect */}
+                        <motion.div
+                          animate={{ x: [-100, 200] }}
+                          transition={{ duration: 2, repeat: Infinity, repeatDelay: 4 }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                        />
+                        <span className="relative z-10">Join Our Community</span>
+                      </Link>
+                    </motion.div>
+                    
                     <Link
                       href="/features"
-                      className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md hover:shadow-xl shadow-sm text-sky-600 bg-white hover:bg-gray-50 transition-colors duration-300"
+                      className="inline-flex items-center justify-center px-8 py-4 border-2 border-indigo-200 text-lg font-bold rounded-xl hover:shadow-xl shadow-lg text-indigo-600 bg-white hover:bg-indigo-50 transition-all duration-300"
                     >
                       Explore Features
                     </Link>
@@ -153,7 +217,7 @@ export default function About() {
                   whileInView={{ scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6 }}
-                  className="bg-gradient-to-br from-sky-100 to-indigo-100 p-8 rounded-xl shadow-lg border border-gray-200"
+                  className="bg-gradient-to-br from-indigo-100 to-purple-100 p-8 rounded-3xl shadow-2xl border border-white/50 backdrop-blur-sm"
                 >
                   <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
                     <Image
@@ -176,15 +240,15 @@ export default function About() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="py-16 sm:py-24 lg:py-32 bg-sky-50"
+          className="py-16 sm:py-24 lg:py-32 bg-gradient-to-br from-indigo-50 to-purple-50"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <span className="inline-block bg-white text-sky-600 px-3 py-1 rounded-full text-sm font-medium mb-4 shadow-sm">
+              <span className="inline-block bg-white text-indigo-600 px-4 py-2 rounded-full text-sm font-medium mb-6 shadow-lg">
                 Our Team
               </span>
-              <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-                The <span className="text-sky-600">People</span> Behind the Platform
+              <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl mb-6">
+                The <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">People</span> Behind the Platform
               </h2>
               <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
                 A diverse team of engineers, designers, and visionaries spread across 12 countries.
@@ -200,16 +264,16 @@ export default function About() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   whileHover={{ y: -10 }}
-                  className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg"
+                  className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl border border-white/50"
                 >
                   <div className="p-6">
                     <div className="flex items-center mb-4">
-                      <div className="flex-shrink-0 bg-sky-100 p-3 rounded-lg text-sky-600">
+                      <div className="flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 p-3 rounded-xl text-indigo-600 shadow-sm">
                         {member.icon}
                       </div>
                       <div className="ml-4">
                         <h3 className="text-lg font-bold text-gray-900">{member.name}</h3>
-                        <p className="text-sm text-sky-600">{member.role}</p>
+                        <p className="text-sm font-medium text-purple-600">{member.role}</p>
                       </div>
                     </div>
                     <p className="text-gray-600">{member.bio}</p>
@@ -226,7 +290,7 @@ export default function About() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="py-16 sm:py-24 bg-gradient-to-r from-sky-500 to-sky-700"
+          className="py-16 sm:py-24 bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
@@ -243,7 +307,7 @@ export default function About() {
                     {stat.icon}
                   </div>
                   <p className="mt-2 text-4xl font-bold text-white">{stat.value}</p>
-                  <p className="mt-2 text-sm font-medium text-sky-100">{stat.name}</p>
+                  <p className="mt-2 text-sm font-medium text-indigo-100">{stat.name}</p>
                 </motion.div>
               ))}
             </div>
@@ -260,11 +324,11 @@ export default function About() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <span className="inline-block bg-sky-100 text-sky-600 px-3 py-1 rounded-full text-sm font-medium mb-4 shadow-sm">
+              <span className="inline-block bg-indigo-100 text-indigo-600 px-4 py-2 rounded-full text-sm font-medium mb-6 shadow-lg">
                 Our Values
               </span>
-              <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-                What <span className="text-sky-600">Guides</span> Us
+              <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl mb-8">
+                What <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Guides</span> Us
               </h2>
             </div>
 
@@ -276,9 +340,14 @@ export default function About() {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="text-center"
               >
-                <div className="flex justify-center text-sky-600 mb-4">
-                  <FaHandshake className="h-10 w-10" />
-                </div>
+                <motion.div 
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="flex justify-center text-indigo-600 mb-6"
+                >
+                  <div className="p-4 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl shadow-lg">
+                    <FaHandshake className="h-8 w-8" />
+                  </div>
+                </motion.div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Trust & Transparency</h3>
                 <p className="text-gray-600">
                   We believe in open communication and building products that earn user trust through transparency.
@@ -292,9 +361,14 @@ export default function About() {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="text-center"
               >
-                <div className="flex justify-center text-indigo-600 mb-4">
-                  <FiUsers className="h-10 w-10" />
-                </div>
+                <motion.div 
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="flex justify-center text-purple-600 mb-6"
+                >
+                  <div className="p-4 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl shadow-lg">
+                    <FiUsers className="h-8 w-8" />
+                  </div>
+                </motion.div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">User-Centric Design</h3>
                 <p className="text-gray-600">
                   Every decision starts with understanding and prioritizing our users' needs and experiences.
@@ -308,9 +382,14 @@ export default function About() {
                 transition={{ duration: 0.5, delay: 0.5 }}
                 className="text-center"
               >
-                <div className="flex justify-center text-amber-500 mb-4">
-                  <FaLightbulb className="h-10 w-10" />
-                </div>
+                <motion.div 
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="flex justify-center text-blue-600 mb-6"
+                >
+                  <div className="p-4 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl shadow-lg">
+                    <FaLightbulb className="h-8 w-8" />
+                  </div>
+                </motion.div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Continuous Innovation</h3>
                 <p className="text-gray-600">
                   We embrace change and constantly seek better ways to solve communication challenges.

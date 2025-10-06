@@ -107,29 +107,41 @@ export default function ChatInput({ sendMessage, onNewContact }) {
       <AnimatePresence>
         {showContactForm && (
           <motion.form
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
             onSubmit={handleAddContact}
-            className="mb-4 flex items-center bg-sky-100 p-3 rounded-lg shadow-lg"
+            className="mb-4 flex items-center bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-white/50 relative overflow-hidden"
           >
-            <input
-              type="email"
-              value={newContactEmail}
-              onChange={(e) => setNewContactEmail(e.target.value)}
-              placeholder="Enter friend's email"
-              className="flex-1 border border-gray-300 bg-white rounded-full py-2 px-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-              autoFocus
-            />
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              type="submit"
-              className="ml-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full p-2 shadow-sm"
-            >
-              <PlusIcon className="h-5 w-5" />
-            </motion.button>
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 via-transparent to-purple-50/50 pointer-events-none" />
+            
+            <div className="relative z-10 flex items-center w-full space-x-3">
+              <input
+                type="email"
+                value={newContactEmail}
+                onChange={(e) => setNewContactEmail(e.target.value)}
+                placeholder="Enter friend's email"
+                className="flex-1 border-2 border-gray-200 bg-white/90 rounded-xl py-3 px-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-400"
+                required
+                autoFocus
+              />
+              <motion.button
+                whileHover={{ scale: 1.05, rotate: 90 }}
+                whileTap={{ scale: 0.95 }}
+                type="submit"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20 relative overflow-hidden"
+              >
+                {/* Shine Effect */}
+                <motion.div
+                  animate={{ x: [-20, 40] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                />
+                <PlusIcon className="h-5 w-5 relative z-10" />
+              </motion.button>
+            </div>
           </motion.form>
         )}
       </AnimatePresence>
@@ -137,59 +149,101 @@ export default function ChatInput({ sendMessage, onNewContact }) {
       <motion.form
         layout
         onSubmit={handleSubmit}
-        className="flex items-end bg-sky-100 p-3 rounded-lg shadow-lg"
+        className="flex items-center bg-white/80 backdrop-blur-sm p-3 rounded-2xl shadow-xl border border-white/50 relative overflow-hidden"
       >
-        <div className="flex items-center mr-2 space-x-1">
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/30 via-transparent to-purple-50/30 pointer-events-none" />
+        
+        <div className="flex items-center mr-3 space-x-2 relative z-10">
           <motion.button
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.1, rotate: 90 }}
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => {
               setShowContactForm(!showContactForm);
               setShowEmojiPicker(false);
             }}
-            className="text-sky-700 hover:text-sky-600 hover:bg-sky-200 rounded-full p-2"
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl p-2 transition-all duration-300 border border-transparent hover:border-indigo-200 flex items-center justify-center w-10 h-10"
             aria-label="Add contact"
           >
-            <PlusIcon className="h-6 w-6" />
+            <PlusIcon className="h-5 w-5" />
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.1, rotate: 15 }}
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className={`text-yellow-500 hover:bg-sky-200 rounded-full p-2 ${showEmojiPicker ? 'text-yellow-500 bg-gray-300' : ''}`}
+            className={`relative rounded-xl p-2 transition-all duration-300 border border-transparent overflow-hidden flex items-center justify-center w-10 h-10 ${
+              showEmojiPicker 
+                ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300 shadow-lg' 
+                : 'hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 hover:border-yellow-200'
+            }`}
             aria-label="Add emoji"
           >
-            <FaSmile className="h-6 w-6 bg-black rounded-full" />
+            {/* Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-orange-400/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+            
+            {/* Enhanced Emoji */}
+            <motion.div
+              animate={showEmojiPicker ? { rotate: [0, 10, -10, 0] } : {}}
+              transition={{ duration: 0.5, repeat: showEmojiPicker ? Infinity : 0, repeatDelay: 2 }}
+              className="relative z-10 text-lg flex items-center justify-center"
+            >
+              😊
+            </motion.div>
+            
+            {/* Shine Effect */}
+            {showEmojiPicker && (
+              <motion.div
+                animate={{ x: [-20, 40] }}
+                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+              />
+            )}
           </motion.button>
         </div>
 
-        <div className="relative flex-1">
+        <div className="relative flex-1 z-10">
           <textarea
             ref={inputRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="w-full bg-white rounded-2xl py-3 px-4 text-gray-800 focus:outline-none focus:border-transparent -mb-2 resize-none max-h-28 overflow-y-auto transition-all duration-200 hide-scrollbar whitespace-pre-wrap"
+            className="w-full bg-white/90 rounded-2xl py-3 px-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 border-2 border-gray-200 resize-none max-h-28 overflow-y-auto transition-all duration-300 hide-scrollbar whitespace-pre-wrap placeholder-gray-400 shadow-sm"
             disabled={isSending}
             rows="1"
-            style={{ minHeight: '48px' }}
+            style={{ minHeight: '40px' }}
           />
         </div>
 
         <motion.button
-          whileHover={!message.trim() || isSending ? {} : { scale: 1.1 }}
+          whileHover={!message.trim() || isSending ? {} : { scale: 1.1, rotate: 15 }}
           whileTap={!message.trim() || isSending ? {} : { scale: 0.95 }}
           type="submit"
           disabled={!message.trim() || isSending}
-          className={`ml-2 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-full p-2 shadow-sm ${!message.trim() || isSending ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+          className={`ml-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20 relative overflow-hidden z-10 flex items-center justify-center w-10 h-10 ${
+            !message.trim() || isSending ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           aria-label="Send message"
         >
-          <PaperAirplaneIcon className="h-6 w-6 transform" />
+          {/* Shine Effect */}
+          {message.trim() && !isSending && (
+            <motion.div
+              animate={{ x: [-20, 40] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+            />
+          )}
+          
+          <motion.div
+            animate={isSending ? { rotate: 360 } : {}}
+            transition={isSending ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+            className="relative z-10"
+          >
+            <PaperAirplaneIcon className="h-5 w-5 transform" />
+          </motion.div>
         </motion.button>
       </motion.form>
 

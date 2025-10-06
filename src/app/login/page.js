@@ -4,8 +4,11 @@ import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import PageLoader from '../../components/Layout/PageLoader';
 
 export default function Login() {
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -15,11 +18,20 @@ export default function Login() {
   const router = useRouter();
 
   useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (!loading && user) {
       // Directly redirect to chat after login
       router.push('/chat');
     }
   }, [user, loading, router]);
+
+  if (!mounted || loading) {
+    return <PageLoader />;
+  }
 
   // Define handleSubmit to handle form submission
   const handleSubmit = async (e) => {
@@ -37,10 +49,36 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sky-50">
-      <div className="w-full max-w-[470px] px-8 py-8 bg-white rounded-2xl shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-50 via-white to-purple-50 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{ 
+            x: [0, 30, 0],
+            y: [0, -15, 0],
+            rotate: [0, 180, 360]
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="absolute top-20 right-10 w-16 h-16 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-xl"
+        />
+        <motion.div
+          animate={{ 
+            x: [0, -20, 0],
+            y: [0, 25, 0],
+            rotate: [360, 180, 0]
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-20 left-10 w-20 h-20 bg-gradient-to-br from-blue-200/20 to-cyan-200/20 rounded-full blur-xl"
+        />
+      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-[470px] px-8 py-8 bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/50 relative z-10"
+      >
         <div className="text-center mb-4">
-          <div className="mx-auto w-12 h-12 bg-gradient-to-tr from-sky-400 to-sky-700 rounded-full flex items-center justify-center mb-1">
+          <div className="mx-auto w-12 h-12 bg-gradient-to-tr from-indigo-500 via-purple-500 to-blue-600 rounded-full flex items-center justify-center mb-1 shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
@@ -71,7 +109,7 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 text-md text-gray-800 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition duration-200"
+              className="w-full px-4 py-2 text-md text-gray-800 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition duration-200"
               placeholder="your@email.com"
             />
           </div>
@@ -81,7 +119,7 @@ export default function Login() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-              <Link href="/forgot-password" className="text-sm text-sky-600 hover:text-sky-500">
+              <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
                 Forgot password?
               </Link>
             </div>
@@ -93,7 +131,7 @@ export default function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 text-md text-gray-800 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition duration-200 pr-10"
+              className="w-full px-4 py-2 text-md text-gray-800 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition duration-200 pr-10"
               placeholder="••••••••"
             />
             <span
@@ -107,7 +145,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-3 px-4 bg-gradient-to-tr from-sky-400 to-sky-700 hover:from-sky-500 hover:to-sky-800 text-white font-medium rounded-lg transition duration-200 ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+            className={`w-full py-3 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600 hover:shadow-lg text-white font-bold rounded-xl transition-all duration-300 relative overflow-hidden ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
@@ -123,17 +161,17 @@ export default function Login() {
 
         <div className="mt-4 text-center text-sm text-gray-500">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-medium text-sky-600 hover:text-sky-500">
+          <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
             Sign up
           </Link>
         </div>
 
         <div className="mt-4 pt-2 border-t border-gray-300">
           <p className="text-xs text-gray-500 text-center">
-            By continuing, you agree to our <a href="/terms" className="text-sky-600 hover:text-sky-500">Terms of Service</a> and <a href="/privacy" className="text-sky-600 hover:text-sky-500">Privacy Policy</a>.
+            By continuing, you agree to our <a href="/terms" className="text-indigo-600 hover:text-indigo-500">Terms of Service</a> and <a href="/privacy" className="text-indigo-600 hover:text-indigo-500">Privacy Policy</a>.
           </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

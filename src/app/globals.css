@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: linear-gradient(to right, #f0f9ff, #ffffff, #faf5ff);
   --foreground: #171717;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: linear-gradient(to right, #1e1b4b, #0f172a, #581c87);
     --foreground: #ededed;
   }
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(to right, #f0f9ff, #ffffff, #faf5ff);
   color: var(--foreground);
   font-feature-settings: 'rlig' 1, 'calt' 1;
 }
@@ -98,4 +98,14 @@ button:focus, a:focus {
 
 .status-delivered {
   color: rgba(0, 0, 0, 0.3); /* Gray checkmarks for delivered */
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
 }

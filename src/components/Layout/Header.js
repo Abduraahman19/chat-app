@@ -70,120 +70,266 @@ export default function Header() {
   };
 
   if (!mounted) {
-    return <div className="h-[62px] bg-sky-50"></div>;
+    return <div className="h-[68px] bg-gradient-to-r from-indigo-50/30 via-white/30 to-purple-50/30"></div>;
   }
 
   return (
     <>
+      {/* Animated Background Elements */}
+      <div className="fixed top-0 w-full h-20 overflow-hidden pointer-events-none z-40">
+        <motion.div
+          animate={{ 
+            x: [0, 100, 0],
+            y: [0, -20, 0],
+            rotate: [0, 180, 360]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute top-2 right-10 w-16 h-16 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-xl"
+        />
+        <motion.div
+          animate={{ 
+            x: [0, -60, 0],
+            y: [0, 15, 0],
+            rotate: [360, 180, 0]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1 left-20 w-12 h-12 bg-gradient-to-br from-blue-200/20 to-cyan-200/20 rounded-full blur-xl"
+        />
+      </div>
+
       <motion.header
-        initial={{ y: -20, opacity: 0 }}
+        initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-sky-50 backdrop-blur-md shadow-sm py-0' : 'bg-sky-50 backdrop-blur-sm py-1'}`}
+        transition={{ duration: 0.6, ease: 'easeOut', type: "spring", stiffness: 100 }}
+        className={`fixed top-0 w-full z-50 transition-all duration-500 ${isScrolled ? 'bg-white/80 backdrop-blur-xl shadow-xl border-b border-white/20 py-0' : 'bg-gradient-to-r from-indigo-50/80 via-white/80 to-purple-50/80 backdrop-blur-xl border-b border-white/30 py-1'}`}
       >
-        <div className="max-w-8xl border-b border-gray-200 mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14">
-            {/* Logo with conditional navigation */}
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <div className="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12 relative">
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/30 via-transparent to-purple-50/30 pointer-events-none" />
+          
+          <div className="flex justify-between items-center h-16 relative z-10">
+            {/* Enhanced Logo */}
+            <motion.div 
+              whileHover={{ scale: 1.05, y: -2 }} 
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            >
               <Link
                 href={user ? '/chat' : '/'}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-3 group"
                 onClick={handleLogoClick}
               >
-                <motion.div
-                  className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 to-sky-700 flex items-center justify-center shadow-md"
-                  whileHover={{ rotate: 5, scale: 1.1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                >
-                  <FaRegComments className="text-white text-sm" />
+                <div className="relative">
+                  {/* Animated Ring */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                    className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 opacity-30 blur-sm"
+                  />
+                  
+                  <motion.div
+                    className="relative w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 flex items-center justify-center shadow-xl border-2 border-white/50"
+                    whileHover={{ rotate: 15, scale: 1.15 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  >
+                    <FaRegComments className="text-white text-lg" />
+                    
+                    {/* Shine Effect */}
+                    <motion.div
+                      animate={{ x: [-20, 40] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 rounded-full"
+                    />
+                  </motion.div>
+                </div>
+                
+                <motion.div className="flex flex-col">
+                  <motion.span
+                    className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent group-hover:from-indigo-700 group-hover:via-purple-700 group-hover:to-blue-700 transition-all duration-300"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    ChatApp
+                  </motion.span>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ delay: 1, duration: 1 }}
+                    className="h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                  />
                 </motion.div>
-                <motion.span
-                  className="text-xl font-bold bg-gradient-to-tr from-sky-500 to-sky-700 bg-clip-text text-transparent"
-                  whileHover={{ scale: 1.03 }}
-                >
-                  ChatApp
-                </motion.span>
               </Link>
             </motion.div>
 
-            <div className="hidden md:flex">
-              <Link
-                href="/features"
-                className="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-200 active:text-sky-800 border border-transparent hover:border-sky-200 text-gray-600 hover:shadow-sm">
-                Features
-              </Link>
-              <Link
-                href="/pricing"
-                className="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-200 active:text-sky-800 border border-transparent hover:border-sky-200 text-gray-600 hover:shadow-sm">
-                Pricing
-              </Link>
-              <Link
-                href="/about"
-                className="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-200 active:text-sky-800 border border-transparent hover:border-sky-200 text-gray-600 hover:shadow-sm">
-                About Us
-              </Link>
-              <Link
-                href="/help"
-                className="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 active:bg-sky-200 active:text-sky-800 border border-transparent hover:border-sky-200 text-gray-600 hover:shadow-sm">
-                Help Center
-              </Link>
-            </div>
+            {/* Enhanced Navigation */}
+            <motion.div 
+              className="hidden md:flex items-center space-x-2"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, staggerChildren: 0.1 }}
+            >
+              {[
+                { href: '/features', label: 'Features' },
+                { href: '/pricing', label: 'Pricing' },
+                { href: '/about', label: 'About Us' },
+                { href: '/help', label: 'Help Center' }
+              ].map((item, index) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 + index * 0.1 }}
+                >
+                  <Link
+                    href={item.href}
+                    className="group relative px-4 py-2 text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-all duration-300"
+                  >
+                    <motion.span
+                      whileHover={{ y: -1 }}
+                      className="relative z-10"
+                    >
+                      {item.label}
+                    </motion.span>
+                    
+                    {/* Hover Background */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 border border-indigo-100/50"
+                      whileHover={{ scale: 1.05 }}
+                    />
+                    
+                    {/* Bottom Border Animation */}
+                    <motion.div
+                      className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 group-hover:w-full group-hover:left-0 transition-all duration-300 rounded-full"
+                    />
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
 
-            {/* User navigation */}
+            {/* Enhanced User Navigation */}
             <div className="flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-4">
                   <motion.div
                     className="relative"
                     ref={menuRef}
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
+                    transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
                   >
                     <motion.button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className="flex items-center cursor-pointer space-x-2 focus:outline-none"
-                      whileHover={{ scale: 1.05 }}
+                      className="group flex items-center cursor-pointer space-x-3 focus:outline-none p-2 rounded-xl hover:bg-white/50 transition-all duration-300 border border-transparent hover:border-white/30 backdrop-blur-sm"
+                      whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <motion.div
-                        className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 to-sky-700 flex items-center justify-center text-white font-medium shadow-md"
-                        animate={isMenuOpen ? { rotate: 360 } : { rotate: 0 }}
-                        transition={{ type: 'spring' }}
-                      >
-                        {user?.email?.charAt(0).toUpperCase()}
+                      <div className="relative">
+                        {/* Animated Ring */}
+                        <motion.div
+                          animate={{ rotate: isMenuOpen ? 360 : 0 }}
+                          transition={{ duration: 0.5, type: "spring" }}
+                          className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-30 blur-sm"
+                        />
+                        
+                        <motion.div
+                          className="relative w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-xl border-2 border-white/50"
+                          animate={isMenuOpen ? { rotate: 360, scale: 1.1 } : { rotate: 0, scale: 1 }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          {user?.email?.charAt(0).toUpperCase()}
+                          
+                          {/* Online Status */}
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center"
+                          >
+                            <motion.div
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="w-2 h-2 bg-white rounded-full"
+                            />
+                          </motion.div>
+                        </motion.div>
+                      </div>
+                      
+                      <motion.div className="hidden md:flex flex-col items-start">
+                        <motion.span
+                          className="text-sm font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors duration-300"
+                          whileHover={{ x: 2 }}
+                        >
+                          {user.displayName || getUsernameFromEmail(user.email)}
+                        </motion.span>
+                        <motion.span
+                          className="text-xs text-gray-500 group-hover:text-indigo-500 transition-colors duration-300"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.8 }}
+                        >
+                          Online
+                        </motion.span>
                       </motion.div>
-                      <motion.span
-                        className="hidden md:inline text-sm font-medium text-gray-700"
-                        whileHover={{ color: '#3B82F6' }}
+                      
+                      {/* Dropdown Arrow */}
+                      <motion.div
+                        animate={{ rotate: isMenuOpen ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="hidden md:block text-gray-400 group-hover:text-indigo-500"
                       >
-                        {user.displayName || getUsernameFromEmail(user.email)}
-                      </motion.span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </motion.div>
                     </motion.button>
 
-                    {/* Dropdown Menu */}
+                    {/* Enhanced Dropdown Menu */}
                     <AnimatePresence>
                       {isMenuOpen && (
                         <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.2, ease: 'easeInOut' }}
-                          className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 z-50 border border-gray-100 overflow-hidden"
+                          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                          transition={{ duration: 0.3, ease: 'easeOut', type: "spring", stiffness: 300 }}
+                          className="absolute right-0 mt-4 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl py-2 z-50 border border-white/50 overflow-hidden"
+                          style={{
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8)'
+                          }}
                         >
+                          {/* Gradient Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-transparent to-purple-50/50 pointer-events-none" />
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ staggerChildren: 0.05 }}
+                            transition={{ staggerChildren: 0.1 }}
+                            className="relative z-10 py-2"
                           >
-                            <Link
-                              href="/profile"
-                              className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 flex items-center transition-colors duration-150"
-                              onClick={() => setIsMenuOpen(false)}
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 }}
                             >
-                              <FiUser className="mr-3 text-blue-500" />
-                              <span>My Profile</span>
-                            </Link>
+                              <Link
+                                href="/profile"
+                                className="group px-6 py-4 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 flex items-center transition-all duration-300 relative overflow-hidden"
+                                onClick={() => setIsMenuOpen(false)}
+                              >
+                                <motion.div
+                                  whileHover={{ rotate: 360, scale: 1.2 }}
+                                  transition={{ duration: 0.5 }}
+                                  className="mr-4 p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg text-white shadow-lg"
+                                >
+                                  <FiUser size={16} />
+                                </motion.div>
+                                <span className="font-semibold group-hover:text-indigo-600 transition-colors text-base">My Profile</span>
+                                <motion.div
+                                  className="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  whileHover={{ x: 2 }}
+                                >
+                                  →
+                                </motion.div>
+                              </Link>
+                            </motion.div>
                             <div className='hidden'>
                               <motion.button
                                 onClick={() => router.push('/add-contact')}
@@ -206,31 +352,35 @@ export default function Header() {
                                 <span>Add Contact</span>
                               </motion.button>
                             </div>
-                            <Link
-                              href="/chats"
-                              className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 flex items-center transition-colors duration-150"
-                              onClick={() => setIsMenuOpen(false)}
+                            <div className="border-t border-gray-100/50 my-2 mx-4"></div>
+                            
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.2 }}
                             >
-                              <FiMessageSquare className="mr-3 text-blue-500" />
-                              <span>My Chats</span>
-                            </Link>
-                            <Link
-                              href="/settings"
-                              className="px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 flex items-center transition-colors duration-150"
-                              onClick={() => setIsMenuOpen(false)}
-                            >
-                              <FiSettings className="mr-3 text-blue-500" />
-                              <span>Settings</span>
-                            </Link>
-                            <div className="border-t border-gray-100 my-1"></div>
-                            <motion.button
-                              onClick={handleLogout}
-                              className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-red-100/60 flex items-center transition-colors duration-150"
-                              whileHover={{ x: 2 }}
-                            >
-                              <FiLogOut className="mr-3 text-blue-500" />
-                              <span>Sign out</span>
-                            </motion.button>
+                              <motion.button
+                                onClick={handleLogout}
+                                className="group w-full text-left px-6 py-4 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 flex items-center transition-all duration-300 relative overflow-hidden"
+                                whileHover={{ x: 2 }}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                <motion.div
+                                  whileHover={{ rotate: 360, scale: 1.2 }}
+                                  transition={{ duration: 0.5 }}
+                                  className="mr-4 p-2 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg text-white shadow-lg"
+                                >
+                                  <FiLogOut size={16} />
+                                </motion.div>
+                                <span className="font-semibold group-hover:text-red-600 transition-colors text-base">Sign out</span>
+                                <motion.div
+                                  className="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  whileHover={{ x: 2 }}
+                                >
+                                  →
+                                </motion.div>
+                              </motion.button>
+                            </motion.div>
                           </motion.div>
                         </motion.div>
                       )}
@@ -239,20 +389,32 @@ export default function Header() {
                 </div>
               ) : (
                 <motion.div
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
+                  transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
                 >
                   <Link
                     href="/login"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-medium hover:shadow-md transition-all"
+                    className="group relative flex items-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 text-white text-sm font-semibold hover:shadow-2xl transition-all duration-300 border border-white/20 overflow-hidden"
                   >
+                    {/* Shine Effect */}
+                    <motion.div
+                      animate={{ x: [-100, 200] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                    />
+                    
                     <motion.span
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="flex items-center"
+                      whileHover={{ scale: 1.05, y: -1 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center relative z-10"
                     >
-                      <FiLogIn className="w-4 h-4 mr-2" />
+                      <motion.div
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <FiLogIn className="w-4 h-4 mr-2" />
+                      </motion.div>
                       Sign in
                     </motion.span>
                   </Link>
@@ -263,8 +425,13 @@ export default function Header() {
         </div>
       </motion.header>
 
-      {/* Add padding to main content to prevent overlap */}
-      <div className="h-[62px] bg-sky-50"></div>
+      {/* Enhanced Spacer */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="h-[68px] bg-gradient-to-r from-indigo-50 via-white to-purple-50"
+      />
     </>
   );
 }

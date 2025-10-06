@@ -4,7 +4,7 @@ import Message from './Message';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { BsChevronDoubleDown } from "react-icons/bs";
+
 import { FiLoader } from "react-icons/fi";
 
 export const formatGroupDate = (date) => {
@@ -44,7 +44,7 @@ export default function MessageList({ messages, onDeleteMessage, isLoading }) {
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
-  const [showScrollButton, setShowScrollButton] = useState(false);
+
   const [initialLoad, setInitialLoad] = useState(true);
 
   const groupedMessages = messages.reduce((acc, message) => {
@@ -62,7 +62,6 @@ export default function MessageList({ messages, onDeleteMessage, isLoading }) {
     if (!containerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
     const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 100;
-    setShowScrollButton(!isNearBottom);
     setIsAutoScrolling(isNearBottom);
   };
 
@@ -94,37 +93,93 @@ export default function MessageList({ messages, onDeleteMessage, isLoading }) {
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto bg-[#e5ddd5] relative"
+      className="relative flex-1 overflow-y-auto bg-gradient-to-br from-indigo-50/30 via-white/50 to-purple-50/30 backdrop-blur-sm"
       style={{ 
-        backgroundImage: "url('data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm40 40h40v40H40V40z' fill='%23dfdbd5' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E')",
+        backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h30v30H0V0zm30 30h30v30H30V30z' fill='%23e0e7ff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E')",
         scrollbarWidth: 'none', 
         msOverflowStyle: 'none'
       }}
     >
-      <div className="flex flex-col space-y-1 px-2 pb-2 pt-1">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{ 
+            x: [0, 100, 0],
+            y: [0, -50, 0],
+            rotate: [0, 360]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute w-32 h-32 rounded-full top-10 right-10 bg-gradient-to-br from-indigo-200/10 to-purple-200/10 blur-3xl"
+        />
+        <motion.div
+          animate={{ 
+            x: [0, -80, 0],
+            y: [0, 60, 0],
+            rotate: [360, 0]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute w-24 h-24 rounded-full bottom-20 left-10 bg-gradient-to-br from-blue-200/10 to-cyan-200/10 blur-2xl"
+        />
+      </div>
+
+      <div className="relative z-10 flex flex-col px-4 pt-2 pb-4 space-y-2">
         {isLoading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center py-2">
-            <FiLoader className="animate-spin text-gray-500 h-5 w-5" />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            className="flex justify-center py-4"
+          >
+            <div className="flex items-center px-4 py-2 space-x-2 border shadow-lg bg-white/80 backdrop-blur-sm rounded-xl border-white/50">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              >
+                <FiLoader className="w-5 h-5 text-indigo-500" />
+              </motion.div>
+              <span className="text-sm font-medium text-gray-600">Loading messages...</span>
+            </div>
           </motion.div>
         )}
 
         <AnimatePresence initial={false}>
           {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-            <div key={date} className="relative">
-              <div className="sticky top-2 z-10 flex justify-center mb-2">
-                <div className="bg-black/20 text-white text-xs px-3 py-1 rounded-full backdrop-blur-md">
-                  {date}
-                </div>
+            <motion.div 
+              key={date} 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative"
+            >
+              <div className="sticky z-20 flex justify-center mb-4 top-2">
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  className="relative px-4 py-2 overflow-hidden text-sm font-medium text-white border shadow-lg bg-gradient-to-r from-indigo-500/90 to-purple-500/90 rounded-2xl backdrop-blur-xl border-white/20"
+                >
+                  {/* Shine Effect */}
+                  <motion.div
+                    animate={{ x: [-50, 100] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
+                    className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  />
+                  <span className="relative z-10">{date}</span>
+                </motion.div>
               </div>
               
-              {dateMessages.map((message) => (
+              {dateMessages.map((message, index) => (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -20, scale: 0.95 }}
+                  transition={{ 
+                    duration: 0.4, 
+                    delay: index * 0.05,
+                    type: "spring",
+                    stiffness: 300
+                  }}
                   layout
+                  className="mb-2"
                 >
                   <Message
                     message={message}
@@ -133,29 +188,13 @@ export default function MessageList({ messages, onDeleteMessage, isLoading }) {
                   />
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           ))}
         </AnimatePresence>
 
-        <div ref={messagesEndRef} className="h-4" />
+        <div ref={messagesEndRef} className="h-6" />
       </div>
 
-      <AnimatePresence>
-        {showScrollButton && (
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => scrollToBottom()}
-            className="fixed bottom-44 right-6 w-10 h-10 bg-white/90 text-gray-700 rounded-full shadow-lg flex items-center justify-center border border-gray-200/50 z-10"
-            aria-label="Scroll to bottom"
-          >
-            <BsChevronDoubleDown className="text-gray-600" />
-          </motion.button>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
