@@ -87,6 +87,7 @@ const Footer = () => {
               <motion.div key={link.href}
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
                 <Link href={link.href}
