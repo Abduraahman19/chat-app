@@ -180,7 +180,7 @@ export default function MediaMessage({ media, isOwn, messageText }) {
       whileHover={{ scale: 1.02 }}
       className={`flex items-center p-4 rounded-xl shadow-lg max-w-sm cursor-pointer ${
         isOwn 
-          ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' 
+          ? 'bg-green-600 text-white' 
           : 'bg-white border border-gray-200 text-gray-800'
       }`}
       onClick={() => setShowFullscreen(true)}

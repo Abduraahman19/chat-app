@@ -4,7 +4,8 @@ import Message from './Message';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 import { FiLoader } from "react-icons/fi";
 
 export const formatGroupDate = (date) => {
@@ -39,19 +40,101 @@ export const getUsernameFromEmail = (email) => {
   return email.split('@')[0];
 };
 
-export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [] }) {
+export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [], activeContact = null, highlightedMessageId = null, onScrollToMessage, selectedMessages = [], onMessageSelect, selectionMode = false }) {
   const { user } = useAuth();
+  const [visibleMessages, setVisibleMessages] = useState(new Set());
+  const observerRef = useRef(null);
   
   // Helper function to get sender info
   const getSenderInfo = (senderId) => {
     if (senderId === user?.uid) return user;
-    return contacts.find(contact => contact.id === senderId) || null;
+    
+    // For group chats, try to get info from participants first
+    if (activeContact?.isGroup && activeContact?.participantNames) {
+      const participantName = activeContact.participantNames[senderId];
+      if (participantName) {
+        // Try to find full contact info
+        const fullContact = contacts.find(contact => contact.id === senderId);
+        if (fullContact) return fullContact;
+        
+        // Return basic info with participant name
+        return {
+          id: senderId,
+          displayName: participantName,
+          photoURL: null // Will show initials
+        };
+      }
+    }
+    
+    return contacts.find(contact => contact.id === senderId) || {
+      id: senderId,
+      displayName: 'Unknown User',
+      photoURL: null
+    };
   };
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const messageRefs = useRef({});
 
   const [initialLoad, setInitialLoad] = useState(true);
+
+  // Intersection Observer for marking messages as read
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const messageId = entry.target.dataset.messageId;
+            const senderId = entry.target.dataset.senderId;
+            
+            // Only mark as read if it's not our own message
+            if (messageId && senderId !== user.uid) {
+              setVisibleMessages(prev => new Set([...prev, messageId]));
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.5, // Message is 50% visible
+        rootMargin: '0px 0px -50px 0px' // Trigger when message is well within view
+      }
+    );
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [user?.uid]);
+
+  // Mark visible messages as read
+  useEffect(() => {
+    if (visibleMessages.size === 0) return;
+
+    const markMessagesAsRead = async () => {
+      const messagesToMark = Array.from(visibleMessages);
+      
+      for (const messageId of messagesToMark) {
+        try {
+          await updateDoc(doc(db, 'messages', messageId), {
+            [`readBy.${user.uid}`]: serverTimestamp(),
+            status: 'read'
+          });
+        } catch (error) {
+          console.error('Error marking message as read:', error);
+        }
+      }
+      
+      // Clear the set after marking
+      setVisibleMessages(new Set());
+    };
+
+    const timer = setTimeout(markMessagesAsRead, 1000); // Delay to avoid too frequent updates
+    return () => clearTimeout(timer);
+  }, [visibleMessages, user?.uid]);
 
   const groupedMessages = messages.reduce((acc, message) => {
     if (message.deletedFor?.includes(user?.uid)) return acc;
@@ -78,28 +161,40 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
     setIsAutoScrolling(true);
   };
 
+  // Auto-scroll only when opening new chat
   useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToBottom(initialLoad ? 'auto' : 'smooth');
-      if (initialLoad) setInitialLoad(false);
-    }, initialLoad ? 100 : 300);
+    if (activeContact) {
+      const timer = setTimeout(() => {
+        scrollToBottom('auto');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeContact]);
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    if (initialLoad) setInitialLoad(false);
   }, [messages]);
 
+  // Scroll to highlighted message
   useEffect(() => {
-    const handleResize = () => {
-      if (isAutoScrolling) scrollToBottom('auto');
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isAutoScrolling]);
+    if (highlightedMessageId && messageRefs.current[highlightedMessageId]) {
+      setTimeout(() => {
+        messageRefs.current[highlightedMessageId].scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }, 100);
+    }
+  }, [highlightedMessageId]);
+
+
 
   return (
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="relative flex-1 overflow-y-auto bg-gradient-to-br from-indigo-50/30 via-white/50 to-purple-50/30 backdrop-blur-sm"
+      className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-indigo-50/30 via-white/50 to-purple-50/30 backdrop-blur-sm"
       style={{ 
         backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h30v30H0V0zm30 30h30v30H30V30z' fill='%23e0e7ff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E')",
         scrollbarWidth: 'none', 
@@ -184,15 +279,40 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
                     type: "spring",
                     stiffness: 300
                   }}
-                  layout
                   className="mb-2"
                 >
-                  <Message
-                    message={message}
-                    onDelete={onDeleteMessage}
-                    showTime={true}
-                    senderInfo={getSenderInfo(message.senderId)}
-                  />
+                  <div
+                    ref={(el) => {
+                      if (el) {
+                        messageRefs.current[message.id] = el;
+                        // Add to intersection observer
+                        if (observerRef.current) {
+                          el.dataset.messageId = message.id;
+                          el.dataset.senderId = message.senderId;
+                          observerRef.current.observe(el);
+                        }
+                      }
+                    }}
+                    className={`transition-all duration-500 ${
+                      highlightedMessageId === message.id 
+                        ? 'bg-gray-100/50 border-2 border-gray-300/50 rounded-lg p-2 shadow-lg backdrop-blur-sm' 
+                        : ''
+                    }`}
+                  >
+                    <Message
+                      message={message}
+                      onDelete={onDeleteMessage}
+                      showTime={true}
+                      senderInfo={getSenderInfo(message.senderId)}
+                      isGroupChat={activeContact?.isGroup || false}
+                      participantNames={activeContact?.participantNames || {}}
+                      contacts={contacts}
+                      isSelected={selectedMessages.includes(message.id)}
+                      onSelect={onMessageSelect}
+                      selectionMode={selectionMode}
+                      activeContact={activeContact}
+                    />
+                  </div>
                 </motion.div>
               ))}
             </motion.div>

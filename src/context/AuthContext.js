@@ -15,7 +15,7 @@ import { updateProfile as updateFirebaseProfile } from 'firebase/auth';
 import {
   doc, setDoc, getDoc, collection,
   query, where, getDocs, updateDoc,
-  deleteDoc, arrayUnion, serverTimestamp
+  deleteDoc, arrayUnion, serverTimestamp, onSnapshot
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -32,6 +32,7 @@ export function AuthContextProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState([]);
   const [isUserOnline, setIsUserOnline] = useState(false);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const router = useRouter();
 
   // Enhanced presence management
@@ -72,50 +73,121 @@ export function AuthContextProvider({ children }) {
     };
   }, [user?.uid]);
 
-  // Enhanced fetchContacts with error handling
-  const fetchContacts = async (userId) => {
+  // Real-time contacts and groups listener with live profile updates
+  const setupContactsListener = (userId) => {
     if (!userId) {
       setContacts([]);
-      return;
+      return null;
     }
 
     try {
-      // First get all chats where user is a participant
       const chatsRef = collection(db, 'chats');
       const q = query(chatsRef, where('participants', 'array-contains', userId));
-      const querySnapshot = await getDocs(q);
+      
+      const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        const contactsAndGroups = [];
+        const userIds = new Set();
 
-      // Extract all unique contact IDs
-      const contactIds = [];
-      querySnapshot.forEach(doc => {
-        const participants = doc.data().participants;
-        const otherUserId = participants.find(id => id !== userId);
-        if (otherUserId && !contactIds.includes(otherUserId)) {
-          contactIds.push(otherUserId);
+        // Collect all user IDs for batch fetching
+        querySnapshot.docs.forEach(chatDoc => {
+          const chatData = chatDoc.data();
+          if (chatData.participants) {
+            chatData.participants.forEach(id => {
+              if (id !== userId) userIds.add(id);
+            });
+          }
+        });
+
+        // Fetch current user data for all participants
+        const userDataMap = {};
+        for (const uid of userIds) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', uid));
+            if (userDoc.exists()) {
+              userDataMap[uid] = userDoc.data();
+            }
+          } catch (error) {
+            console.error('Error fetching user:', uid, error);
+          }
         }
+
+        // Process each chat with current user data
+        for (const chatDoc of querySnapshot.docs) {
+          const chatData = chatDoc.data();
+          const chatId = chatDoc.id;
+          
+          if (chatData.isGroup) {
+            const superAdmin = chatData.superAdmin || chatData.createdBy;
+            const admins = chatData.admins || [superAdmin];
+            const isUserAdmin = admins.includes(userId) || superAdmin === userId;
+            
+            // Update participant photos with current data
+            const updatedParticipantPhotos = { ...chatData.participantPhotos };
+            const updatedParticipantNames = { ...chatData.participantNames };
+            
+            chatData.participants?.forEach(pid => {
+              if (userDataMap[pid]) {
+                updatedParticipantPhotos[pid] = userDataMap[pid].photoURL;
+                updatedParticipantNames[pid] = userDataMap[pid].displayName;
+              }
+            });
+            
+            contactsAndGroups.push({
+              id: chatId,
+              chatId: chatId,
+              displayName: chatData.groupName || 'Unnamed Group',
+              email: `${chatData.participants?.length || 0} members`,
+              photoURL: chatData.groupPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(chatData.groupName || 'Group')}&background=random`,
+              groupPhoto: chatData.groupPhoto,
+              isGroup: true,
+              participants: chatData.participants || [],
+              participantNames: updatedParticipantNames,
+              participantPhotos: updatedParticipantPhotos,
+              createdBy: chatData.createdBy,
+              superAdmin: superAdmin,
+              admins: admins,
+              isAdmin: isUserAdmin,
+              status: `Group • ${chatData.participants?.length || 0} members`
+            });
+          } else {
+            const otherUserId = chatData.participants.find(id => id !== userId);
+            if (otherUserId && userDataMap[otherUserId]) {
+              contactsAndGroups.push({
+                id: otherUserId,
+                ...userDataMap[otherUserId],
+                chatId: chatId,
+                isGroup: false
+              });
+            }
+          }
+        }
+
+        setContacts(contactsAndGroups);
+        
+        // Calculate total unread count
+        let totalUnread = 0;
+        contactsAndGroups.forEach(contact => {
+          const chatData = querySnapshot.docs.find(doc => {
+            const data = doc.data();
+            return contact.isGroup ? doc.id === contact.chatId : data.participants?.includes(contact.id);
+          })?.data();
+          
+          if (chatData?.unreadCount?.[userId]) {
+            totalUnread += chatData.unreadCount[userId];
+          }
+        });
+        
+        setTotalUnreadCount(totalUnread);
+      }, (error) => {
+        console.error('Error in contacts listener:', error);
+        toast.error('Failed to load contacts');
       });
 
-      // Fetch contact details in parallel
-      const contactsData = await Promise.all(
-        contactIds.map(async id => {
-          const userDoc = await getDoc(doc(db, 'users', id));
-          if (userDoc.exists()) {
-            return {
-              id: userDoc.id,
-              ...userDoc.data(),
-              chatId: [userId, id].sort().join('_')
-            };
-          }
-          return null;
-        })
-      );
-
-      // Filter out any null values and set contacts
-      setContacts(contactsData.filter(contact => contact !== null));
+      return unsubscribe;
     } catch (error) {
-      console.error('Error fetching contacts:', error);
-      toast.error('Failed to load contacts');
-      setContacts([]);
+      console.error('Error setting up contacts listener:', error);
+      toast.error('Failed to setup real-time updates');
+      return null;
     }
   };
 
@@ -480,7 +552,7 @@ export function AuthContextProvider({ children }) {
   //   }
   // };
 
-  // Update user profile
+  // Update user profile with real-time sync
   const updateUserProfile = async (profileData) => {
     try {
       if (!user) throw new Error('User not authenticated');
@@ -491,7 +563,7 @@ export function AuthContextProvider({ children }) {
         photoURL: profileData.photoURL
       });
 
-      // Update Firestore document
+      // Update Firestore document - this will trigger real-time listeners
       await updateDoc(doc(db, 'users', user.uid), {
         displayName: profileData.displayName,
         photoURL: profileData.photoURL,
@@ -499,14 +571,23 @@ export function AuthContextProvider({ children }) {
         updatedAt: serverTimestamp()
       });
 
-      // Update local state
-      setUser(prev => ({
-        ...prev,
-        displayName: profileData.displayName,
-        photoURL: profileData.photoURL,
-        status: profileData.status
-      }));
-
+      // Update all group chats where user is participant
+      const chatsRef = collection(db, 'chats');
+      const q = query(chatsRef, where('participants', 'array-contains', user.uid));
+      const querySnapshot = await getDocs(q);
+      
+      const updatePromises = querySnapshot.docs.map(chatDoc => {
+        const chatData = chatDoc.data();
+        if (chatData.isGroup) {
+          return updateDoc(doc(db, 'chats', chatDoc.id), {
+            [`participantNames.${user.uid}`]: profileData.displayName,
+            [`participantPhotos.${user.uid}`]: profileData.photoURL
+          });
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(updatePromises);
       return true;
     } catch (error) {
       console.error('Profile update error:', error);
@@ -514,32 +595,71 @@ export function AuthContextProvider({ children }) {
     }
   };
 
-  // Auth state listener
+  // Auth state listener with real-time contacts and user updates
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    let contactsUnsubscribe = null;
+    let userUnsubscribe = null;
+    
+    const authUnsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // No need to check verification status
-        await fetchContacts(currentUser.uid);
+        // Setup real-time user data listener
+        userUnsubscribe = onSnapshot(doc(db, 'users', currentUser.uid), (doc) => {
+          if (doc.exists()) {
+            const userData = doc.data();
+            setUser({
+              ...currentUser,
+              ...userData,
+              deletedMessages: userData.deletedMessages || []
+            });
+          } else {
+            setUser(currentUser);
+          }
+        });
+        
+        // Setup real-time contacts listener
+        contactsUnsubscribe = setupContactsListener(currentUser.uid);
+        
         // Update presence status
         await updateDoc(doc(db, 'users', currentUser.uid), {
           lastSeen: serverTimestamp(),
           isOnline: true
         });
+      } else {
+        setUser(null);
+        setContacts([]);
+        // Cleanup listeners
+        if (contactsUnsubscribe) {
+          contactsUnsubscribe();
+          contactsUnsubscribe = null;
+        }
+        if (userUnsubscribe) {
+          userUnsubscribe();
+          userUnsubscribe = null;
+        }
       }
-      setUser(currentUser);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      authUnsubscribe();
+      if (contactsUnsubscribe) {
+        contactsUnsubscribe();
+      }
+      if (userUnsubscribe) {
+        userUnsubscribe();
+      }
+    };
   }, []);
 
 
  return (
     <AuthContext.Provider value={{
       user,
+      setUser,
       loading,
       contacts,
       isUserOnline,
+      totalUnreadCount,
       signUp,
       logIn,
       logOut,

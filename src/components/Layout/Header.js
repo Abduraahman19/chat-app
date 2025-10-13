@@ -18,7 +18,7 @@ const FaRegComments = dynamic(() => import('react-icons/fa').then(mod => mod.FaR
 const FiUserPlus = dynamic(() => import('react-icons/fi').then(mod => mod.FiUserPlus));
 
 export default function Header() {
-  const { user, logOut } = useAuth();
+  const { user, logOut, totalUnreadCount } = useAuth();
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -225,13 +225,26 @@ export default function Header() {
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <ProfilePicture 
-                        user={user} 
-                        size="md" 
-                        showOnlineStatus={true}
-                        isOnline={true}
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      />
+                      <div className="relative">
+                        <ProfilePicture 
+                          user={user} 
+                          size="md" 
+                          showOnlineStatus={true}
+                          isOnline={true}
+                          onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        />
+                        {/* Unread Count Badge */}
+                        {totalUnreadCount > 0 && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            whileHover={{ scale: 1.1 }}
+                            className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg border-2 border-white"
+                          >
+                            {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                          </motion.div>
+                        )}
+                      </div>
                       
                       <motion.div className="hidden md:flex flex-col items-start">
                         <motion.span

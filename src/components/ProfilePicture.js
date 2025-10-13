@@ -74,21 +74,11 @@ export default function ProfilePicture({
 
       {/* Online status indicator */}
       {showOnlineStatus && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+        <div
           className={`absolute rounded-full border-2 border-white ${statusSizes[size]} ${
             isOnline ? 'bg-green-500' : 'bg-gray-400'
           }`}
-        >
-          {isOnline && (
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-full h-full bg-green-500 rounded-full"
-            />
-          )}
-        </motion.div>
+        />
       )}
     </div>
   );

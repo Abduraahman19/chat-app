@@ -9,6 +9,7 @@ import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, getDo
 import { db } from '../../utils/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiSearch, FiMoreVertical, FiEdit, FiCheck, FiPlus, FiUsers, FiMessageCircle, FiUser, FiClock, FiWifi, FiWifiOff } from 'react-icons/fi';
+import GroupChatModal from '../Chat/GroupChatModal';
 
 export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   const { user, contacts, addContact } = useAuth();
@@ -28,6 +29,7 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   const [contactCustomNames, setContactCustomNames] = useState({});
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [lastMessageTimes, setLastMessageTimes] = useState({});
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   // Filter and sort contacts - sort by last message time, then alphabetically
   const filteredContacts = contacts
@@ -74,33 +76,29 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
     }
   }, [user?.uid]);
 
-  // Track unread messages count
+  // Track unread messages count from chats collection
   useEffect(() => {
     if (!user?.uid || !contacts.length) return;
 
     const unsubscribes = [];
-    const counts = {};
 
     contacts.forEach(contact => {
-      const chatId = [user.uid, contact.id].sort().join('_');
-      const q = query(
-        collection(db, 'chats', chatId, 'messages'),
-        where('read', '==', false),
-        where('senderId', '==', contact.id)
-      );
+      const chatId = contact.isGroup ? contact.chatId : [user.uid, contact.id].sort().join('_');
+      const chatRef = doc(db, 'chats', chatId);
 
-      const unsubscribe = onSnapshot(q,
-        (snapshot) => {
-          counts[contact.id] = snapshot.size;
-          setUnreadCounts(prev => ({ ...prev, ...counts }));
+      const unsubscribe = onSnapshot(chatRef,
+        (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            const unreadCount = data.unreadCount?.[user.uid] || 0;
+            setUnreadCounts(prev => ({ 
+              ...prev, 
+              [contact.id]: unreadCount 
+            }));
+          }
         },
         (error) => {
-          console.error("Error fetching unread messages:", error);
-          setSnackbar({
-            open: true,
-            message: 'Failed to load unread messages',
-            severity: 'error'
-          });
+          console.error("Error fetching unread count:", error);
         }
       );
 
@@ -317,28 +315,16 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
       [contact.id]: Date.now()
     }));
 
-    // Mark messages as read when contact is selected
+    // Reset unread count when contact is selected
     if (unreadCounts[contact.id] > 0) {
       try {
-        const chatId = [user.uid, contact.id].sort().join('_');
-        const messagesRef = collection(db, 'chats', chatId, 'messages');
-        const q = query(
-          messagesRef,
-          where('read', '==', false),
-          where('senderId', '==', contact.id)
-        );
-
-        const snapshot = await getDocs(q);
-        const batchUpdates = snapshot.docs.map(messageDoc =>
-          updateDoc(doc(db, 'chats', chatId, 'messages', messageDoc.id), {
-            read: true,
-            readAt: new Date().toISOString()
-          })
-        );
-
-        await Promise.all(batchUpdates);
+        const chatId = contact.isGroup ? contact.chatId : [user.uid, contact.id].sort().join('_');
+        await updateDoc(doc(db, 'chats', chatId), {
+          [`unreadCount.${user.uid}`]: 0,
+          [`lastSeen.${user.uid}`]: new Date()
+        });
       } catch (error) {
-        console.error("Error marking messages as read:", error);
+        console.error("Error resetting unread count:", error);
       }
     }
   };
@@ -430,14 +416,27 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
             Contacts
           </motion.h2>
           
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowAddContactModal(true)}
-            className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20"
-          >
-            <FiPlus size={18} />
-          </motion.button>
+          <div className="flex space-x-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowGroupModal(true)}
+              className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20"
+              title="Create Group"
+            >
+              <FiUsers size={18} />
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowAddContactModal(true)}
+              className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20"
+              title="Add Contact"
+            >
+              <FiPlus size={18} />
+            </motion.button>
+          </div>
         </div>
 
         {/* Enhanced Search Bar */}
@@ -448,12 +447,7 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
           className="relative"
         >
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            >
-              <FiSearch className="h-5 w-5 text-gray-400" />
-            </motion.div>
+            <FiSearch className="h-5 w-5 text-gray-400" />
           </div>
           <input
             type="text"
@@ -504,12 +498,16 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
               className="p-2"
             >
               {filteredContacts.map((contact, index) => {
-                const displayName = contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email);
+                const displayName = contact.isGroup 
+                  ? contact.displayName 
+                  : (contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email));
                 const isActive = activeContact?.id === contact.id;
                 const unreadCount = unreadCounts[contact.id] || 0;
-                const contactIsOnline = isOnline(contact.id);
-                const lastSeenText = formatLastSeen(lastSeen[contact.id]);
-                const contactStatus = statuses[contact.id] || "Hey there! I'm using ChatApp";
+                const contactIsOnline = contact.isGroup ? false : isOnline(contact.id);
+                const lastSeenText = contact.isGroup ? '' : formatLastSeen(lastSeen[contact.id]);
+                const contactStatus = contact.isGroup 
+                  ? contact.status 
+                  : (statuses[contact.id] || "Hey there! I'm using ChatApp");
 
                 return (
                   <motion.div
@@ -539,13 +537,32 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                     >
                       <div className="flex items-center space-x-4">
                         {/* Enhanced Avatar */}
-                        <ProfilePicture 
-                          user={contact} 
-                          size="lg" 
-                          showOnlineStatus={true}
-                          isOnline={contactIsOnline}
-                          className={isActive ? 'opacity-90' : ''}
-                        />
+                        {contact.isGroup ? (
+                          <div className="relative">
+                            <ProfilePicture 
+                              user={{
+                                ...contact,
+                                photoURL: contact.groupPhoto || contact.photoURL
+                              }} 
+                              size="lg" 
+                              showOnlineStatus={false}
+                              className={isActive ? 'opacity-90' : ''}
+                            />
+                            {contact.isAdmin && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                                <span className="text-xs text-white">👑</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <ProfilePicture 
+                            user={contact} 
+                            size="lg" 
+                            showOnlineStatus={true}
+                            isOnline={contactIsOnline}
+                            className={isActive ? 'opacity-90' : ''}
+                          />
+                        )}
 
                         {/* Contact Info */}
                         <div className="flex-1 min-w-0">
@@ -607,7 +624,12 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                                       isActive ? 'text-white/80' : 'text-gray-500'
                                     }`}
                                   >
-                                    {contactIsOnline ? (
+                                    {contact.isGroup ? (
+                                      <>
+                                        <FiUsers size={12} className="mr-1" />
+                                        {contact.participants?.length || 0} members
+                                      </>
+                                    ) : contactIsOnline ? (
                                       <>
                                         <FiWifi size={12} className="mr-1" />
                                         Online
@@ -628,28 +650,41 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                                       initial={{ scale: 0 }}
                                       animate={{ scale: 1 }}
                                       whileHover={{ scale: 1.1 }}
-                                      className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg"
+                                      className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg"
                                     >
                                       {unreadCount > 99 ? '99+' : unreadCount}
                                     </motion.div>
                                   )}
                                   
-                                  {/* Edit Button */}
-                                  <motion.button
-                                    whileHover={{ scale: 1.1, rotate: 5 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditClick(contact);
-                                    }}
-                                    className={`p-1.5 rounded-lg transition-colors ${
+                                  {/* Edit Button - Only for individual contacts */}
+                                  {!contact.isGroup && (
+                                    <motion.button
+                                      whileHover={{ scale: 1.1, rotate: 5 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditClick(contact);
+                                      }}
+                                      className={`p-1.5 rounded-lg transition-colors ${
+                                        isActive 
+                                          ? 'hover:bg-white/20 text-white/80' 
+                                          : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                                      }`}
+                                    >
+                                      <FiEdit size={14} />
+                                    </motion.button>
+                                  )}
+                                  
+                                  {/* Group Admin Badge */}
+                                  {contact.isGroup && contact.isAdmin && (
+                                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                                       isActive 
-                                        ? 'hover:bg-white/20 text-white/80' 
-                                        : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-                                    }`}
-                                  >
-                                    <FiEdit size={14} />
-                                  </motion.button>
+                                        ? 'bg-yellow-400/20 text-yellow-200' 
+                                        : 'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                      Admin
+                                    </div>
+                                  )}
                                 </div>
                               </>
                             )}
@@ -870,6 +905,18 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Group Chat Modal */}
+      <GroupChatModal
+        isOpen={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        contacts={contacts}
+        onGroupCreated={(newGroup) => {
+          // Group will be automatically added to contacts via real-time listener
+          // Just close modal and show success
+          setShowGroupModal(false);
+        }}
+      />
 
       {/* Enhanced Snackbar */}
       <Snackbar
