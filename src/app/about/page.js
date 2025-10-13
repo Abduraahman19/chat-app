@@ -11,35 +11,35 @@ import PageLoader from '../../components/Layout/PageLoader'
 
 
 const stats = [
-  { id: 1, name: 'Active Users', value: '10,000+', icon: <FiUsers className="h-8 w-8" />, color: 'text-white' },
-  { id: 2, name: 'Countries', value: '150+', icon: <FiGlobe className="h-8 w-8" />, color: 'text-white' },
-  { id: 3, name: 'Customer Satisfaction', value: '98%', icon: <FiHeart className="h-8 w-8" />, color: 'text-white' },
-  { id: 4, name: 'Awards Won', value: '12', icon: <FiAward className="h-8 w-8" />, color: 'text-white' },
+  { id: 1, name: 'Real-time Features', value: '100%', icon: <FiUsers className="h-8 w-8" />, color: 'text-white' },
+  { id: 2, name: 'Modern Tech Stack', value: 'Next.js', icon: <FiGlobe className="h-8 w-8" />, color: 'text-white' },
+  { id: 3, name: 'Responsive Design', value: '100%', icon: <FiHeart className="h-8 w-8" />, color: 'text-white' },
+  { id: 4, name: 'Firebase Powered', value: 'Yes', icon: <FiAward className="h-8 w-8" />, color: 'text-white' },
 ];
 
 const teamMembers = [
   {
-    name: 'Abdur Rahman',
-    role: 'CEO & Founder',
-    bio: 'Visionary leader with 15+ years in tech innovation',
-    icon: <FaLightbulb className="h-6 w-6" />
-  },
-  {
-    name: 'Sarah Chen',
-    role: 'CTO',
-    bio: 'Security expert and architecture specialist',
+    name: 'Development Team',
+    role: 'Full-Stack Development',
+    bio: 'Built with Next.js, Firebase, and modern React patterns',
     icon: <FiCode className="h-6 w-6" />
   },
   {
-    name: 'Miguel Rodriguez',
-    role: 'Head of Design',
-    bio: 'Creates intuitive user experiences',
+    name: 'UI/UX Design',
+    role: 'User Experience',
+    bio: 'Crafted with Tailwind CSS and Framer Motion animations',
     icon: <FiMessageSquare className="h-6 w-6" />
   },
   {
-    name: 'Priya Patel',
-    role: 'Global Partnerships',
-    bio: 'Connects communities worldwide',
+    name: 'Backend Services',
+    role: 'Real-time Infrastructure',
+    bio: 'Firebase Firestore for real-time data synchronization',
+    icon: <FaLightbulb className="h-6 w-6" />
+  },
+  {
+    name: 'Media Storage',
+    role: 'Cloud Integration',
+    bio: 'Cloudinary for optimized media storage and delivery',
     icon: <FiNetwork className="h-6 w-6" />
   }
 ];
@@ -139,7 +139,7 @@ export default function About() {
                 transition={{ delay: 0.5 }}
                 className="mt-8 max-w-4xl mx-auto text-xl text-indigo-100 leading-relaxed"
               >
-                Connecting people across the globe since 2018 with secure, intuitive communication solutions that bring the world closer together.
+A modern chat application built with Next.js and Firebase, featuring real-time messaging, group chats, and secure media sharing for seamless communication.
               </motion.p>
             </motion.div>
           </div>
@@ -175,7 +175,7 @@ export default function About() {
                     transition={{ delay: 0.2 }}
                     className="mt-4 text-lg text-gray-600"
                   >
-                    We believe communication should be simple, secure, and accessible to everyone. Our mission is to break down barriers and bring people closer together through innovative technology that respects privacy and enhances human connection.
+                    We built this chat application to demonstrate modern web development capabilities with real-time features. Our focus is on creating intuitive user experiences with secure messaging, group management, and seamless media sharing powered by cutting-edge technologies.
                   </motion.p>
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -251,7 +251,7 @@ export default function About() {
                 The <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">People</span> Behind the Platform
               </h2>
               <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
-                A diverse team of engineers, designers, and visionaries spread across 12 countries.
+                Built with modern web technologies and best practices for scalable real-time applications.
               </p>
             </div>
 
@@ -350,7 +350,7 @@ export default function About() {
                 </motion.div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Trust & Transparency</h3>
                 <p className="text-gray-600">
-                  We believe in open communication and building products that earn user trust through transparency.
+                  Built with secure Firebase authentication and real-time data synchronization for reliable messaging.
                 </p>
               </motion.div>
 
@@ -371,7 +371,7 @@ export default function About() {
                 </motion.div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">User-Centric Design</h3>
                 <p className="text-gray-600">
-                  Every decision starts with understanding and prioritizing our users' needs and experiences.
+                  Designed with intuitive interfaces, responsive layouts, and smooth animations for the best user experience.
                 </p>
               </motion.div>
 
@@ -392,7 +392,7 @@ export default function About() {
                 </motion.div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Continuous Innovation</h3>
                 <p className="text-gray-600">
-                  We embrace change and constantly seek better ways to solve communication challenges.
+                  Leveraging cutting-edge web technologies like Next.js 15, Firebase, and Cloudinary for optimal performance.
                 </p>
               </motion.div>
             </div>

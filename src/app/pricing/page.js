@@ -11,45 +11,45 @@ import PageLoader from '../../components/Layout/PageLoader'
 
 const plans = [
   {
-    name: "Starter",
+    name: "Free Demo",
     price: "Free",
-    description: "Perfect for individuals and small teams",
+    description: "Experience all features with no limitations",
     features: [
-      { text: "Up to 5 team members", icon: <FiUsers className="text-indigo-500" /> },
-      { text: "Basic messaging features", icon: <FaRegComments className="text-indigo-500" /> },
-      { text: "1GB file storage", icon: <FiDatabase className="text-indigo-500" /> },
-      { text: "Email support", icon: <FiHeadphones className="text-indigo-500" /> }
+      { text: "Unlimited messaging", icon: <FaRegComments className="text-indigo-500" /> },
+      { text: "Group chat creation", icon: <FiUsers className="text-indigo-500" /> },
+      { text: "Media sharing (photos/videos)", icon: <FiDatabase className="text-indigo-500" /> },
+      { text: "Real-time notifications", icon: <FiHeadphones className="text-indigo-500" /> }
     ],
-    featured: false,
+    featured: true,
     color: "from-indigo-100 to-indigo-50",
     button: "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
   },
   {
-    name: "Professional",
-    price: "$14.99",
-    description: "For growing businesses and teams",
+    name: "Personal",
+    price: "$4.99",
+    description: "Enhanced features for personal use",
     features: [
-      { text: "Up to 50 team members", icon: <FiUsers className="text-purple-500" /> },
-      { text: "Advanced messaging features", icon: <FaRegComments className="text-purple-500" /> },
-      { text: "50GB file storage", icon: <FiDatabase className="text-purple-500" /> },
-      { text: "Priority email & chat support", icon: <FiHeadphones className="text-purple-500" /> },
-      { text: "Custom integrations", icon: <FiZap className="text-purple-500" /> }
+      { text: "All free features", icon: <FiAward className="text-purple-500" /> },
+      { text: "Custom profile themes", icon: <FaRegComments className="text-purple-500" /> },
+      { text: "Advanced search filters", icon: <FiDatabase className="text-purple-500" /> },
+      { text: "Priority support", icon: <FiHeadphones className="text-purple-500" /> },
+      { text: "Message backup", icon: <FiZap className="text-purple-500" /> }
     ],
-    featured: true,
+    featured: false,
     color: "from-purple-100 to-purple-50",
     button: "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
   },
   {
-    name: "Enterprise",
-    price: "Custom",
-    description: "For large organizations",
+    name: "Business",
+    price: "$9.99",
+    description: "Perfect for teams and organizations",
     features: [
-      { text: "Unlimited team members", icon: <FiUsers className="text-blue-500" /> },
-      { text: "All premium features", icon: <FiAward className="text-blue-500" /> },
-      { text: "Custom storage solutions", icon: <FiDatabase className="text-blue-500" /> },
-      { text: "24/7 dedicated support", icon: <FiHeadphones className="text-blue-500" /> },
-      { text: "Advanced security", icon: <FiZap className="text-blue-500" /> },
-      { text: "Custom integrations", icon: <FiZap className="text-blue-500" /> }
+      { text: "All personal features", icon: <FiAward className="text-blue-500" /> },
+      { text: "Admin dashboard", icon: <FiUsers className="text-blue-500" /> },
+      { text: "Team analytics", icon: <FiDatabase className="text-blue-500" /> },
+      { text: "24/7 support", icon: <FiHeadphones className="text-blue-500" /> },
+      { text: "Custom integrations", icon: <FiZap className="text-blue-500" /> },
+      { text: "Advanced security", icon: <FiZap className="text-blue-500" /> }
     ],
     featured: false,
     color: "from-blue-100 to-blue-50",
@@ -263,7 +263,7 @@ export default function Pricing() {
             transition={{ delay: 0.4 }}
             className="mt-6 max-w-4xl mx-auto text-xl text-gray-600 leading-relaxed"
           >
-            Choose the perfect plan for your team. Scale up or down as needed with our flexible pricing options.
+            Start with our free demo to experience all features, then upgrade for enhanced capabilities and premium support.
           </motion.p>
         </motion.div>
 

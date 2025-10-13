@@ -32,36 +32,51 @@ export default function TermsPage() {
     {
       icon: <FiCheckCircle className="w-5 h-5" />,
       title: "Acceptance of Terms",
-      content: "By accessing or using our services, you agree to comply with these Terms. If you disagree, please refrain from using our platform."
+      content: "By creating an account and using our chat application, you agree to these Terms of Service. If you don't agree, please don't use our messaging platform."
     },
     {
       icon: <FiAlertTriangle className="w-5 h-5" />,
       title: "User Responsibilities",
       items: [
-        "You must be at least 13 years old to use our services",
-        "Do not share false, harmful, or illegal content",
-        "Respect other users' privacy and rights",
-        "Maintain the confidentiality of your account credentials"
+        "You must be at least 13 years old to create an account",
+        "Provide accurate information when registering your account",
+        "Keep your login credentials secure and don't share your account",
+        "Use the platform respectfully and don't harass other users",
+        "Don't send spam, malware, or inappropriate content in messages"
       ]
     },
     {
       icon: <FiLock className="w-5 h-5" />,
-      title: "Intellectual Property",
-      content: "All content on this platform (logos, text, graphics) is our property or licensed to us. Unauthorized use is prohibited."
+      title: "Platform Usage Rules",
+      items: [
+        "Use real-time messaging and group chat features responsibly",
+        "Don't attempt to hack, disrupt, or damage our services",
+        "Respect other users' privacy and don't share their personal information",
+        "Don't create fake accounts or impersonate others",
+        "Follow group chat rules set by group administrators"
+      ]
     },
     {
       icon: <FiEdit2 className="w-5 h-5" />,
-      title: "Content Guidelines",
+      title: "Content & Media Guidelines",
       items: [
-        "You retain ownership of content you create",
-        "You grant us a license to display and distribute your content",
-        "Prohibited content includes hate speech, harassment, and illegal material"
+        "You own the messages, photos, and files you share",
+        "Don't share copyrighted content without permission",
+        "Prohibited content: hate speech, threats, illegal material, adult content",
+        "We may remove content that violates these guidelines",
+        "Media files are stored securely but you're responsible for their content"
       ]
     },
     {
       icon: <FiRefreshCw className="w-5 h-5" />,
-      title: "Changes to Terms",
-      content: "We may update these Terms periodically. Continued use after changes constitutes acceptance. We'll notify you of significant changes."
+      title: "Service Availability & Changes",
+      items: [
+        "We strive for 99.9% uptime but can't guarantee uninterrupted service",
+        "We may update features, fix bugs, or add new functionality",
+        "These Terms may be updated - we'll notify you of major changes",
+        "You can delete your account and data at any time",
+        "We reserve the right to suspend accounts that violate these terms"
+      ]
     }
   ]
 
@@ -196,7 +211,7 @@ export default function TermsPage() {
                 transition={{ delay: 0.8 }}
                 className="text-indigo-100 mb-6 text-lg leading-relaxed"
               >
-                Our legal team is here to clarify any questions about our terms and conditions.
+                Need clarification about messaging rules, account policies, or platform usage? Contact us for help.
               </motion.p>
               
               <motion.div

@@ -20,34 +20,34 @@ const Footer = dynamic(() => import('@/components/Layout/Footer'), {
 
 const faqs = [
   {
-    question: "How do I reset my password?",
-    answer: "Go to the login page and click 'Forgot Password'. You'll receive an email with instructions to reset your password.",
-    category: "Account"
-  },
-  {
-    question: "Is there a mobile app available?",
-    answer: "Yes! Our app is available for both iOS and Android devices. You can download it from the respective app stores.",
-    category: "Mobile"
-  },
-  {
-    question: "How secure is my data?",
-    answer: "We use end-to-end encryption to protect all your messages and data. Your privacy is our top priority.",
-    category: "Security"
-  },
-  {
-    question: "Can I use ChatApp for business?",
-    answer: "Absolutely! We offer business plans with additional features tailored for professional use.",
-    category: "Business"
+    question: "How do I add a new contact?",
+    answer: "Click the 'Add Contact' button in the sidebar and enter the email address of the person you want to chat with. They must have an account first.",
+    category: "Contacts"
   },
   {
     question: "How do I create a group chat?",
-    answer: "Click the 'New Chat' button and select 'New Group'. Then add participants and customize your group settings.",
+    answer: "Click 'New Group' in the sidebar, add participants by their email addresses, set a group name and photo, then start chatting!",
+    category: "Groups"
+  },
+  {
+    question: "Can I share photos and videos?",
+    answer: "Yes! Click the attachment icon in the chat input to share photos, videos, and other files. You can also capture photos directly with the camera.",
+    category: "Media"
+  },
+  {
+    question: "How do I know if my message was read?",
+    answer: "Messages show status indicators: sent (single check), delivered (double check), and read (blue checks). You can see who read your messages in groups.",
+    category: "Messages"
+  },
+  {
+    question: "Can I search through my messages?",
+    answer: "Yes! Click the search icon in the chat header to search through all messages in that conversation. You can search by text content.",
     category: "Features"
   },
   {
-    question: "What payment methods do you accept?",
-    answer: "We accept all major credit cards, PayPal, and bank transfers for premium plans.",
-    category: "Billing"
+    question: "How do I manage group settings?",
+    answer: "Group admins can change the group photo, add/remove members, and manage admin permissions. Click the group info button to access these settings.",
+    category: "Groups"
   }
 ];
 
@@ -138,7 +138,7 @@ export default function HelpCenter() {
             Help Center
           </h1>
           <p className="mt-5 max-w-3xl mx-auto text-xl text-gray-600">
-            Find answers to common questions or contact our support team
+            Find answers about messaging, groups, media sharing, and more
           </p>
         </motion.div>
 

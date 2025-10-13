@@ -12,55 +12,55 @@ const features = [
   {
     icon: <FiMessageSquare className="w-6 h-6" />,
     title: "Real-time Messaging",
-    description: "Chat instantly with your team with our lightning-fast messaging system.",
+    description: "Instant messaging with typing indicators and message status tracking.",
     gradient: "from-indigo-500 to-purple-600"
   },
   {
     icon: <FiUsers className="w-6 h-6" />,
     title: "Group Chats",
-    description: "Create unlimited groups for projects, teams, or social circles.",
+    description: "Create groups with admin controls, member management, and group photos.",
     gradient: "from-purple-500 to-indigo-600"
   },
   {
     icon: <FiLock className="w-6 h-6" />,
-    title: "End-to-End Encryption",
-    description: "Your conversations are secured with military-grade encryption.",
+    title: "Secure Authentication",
+    description: "Firebase-powered secure login with profile management and privacy controls.",
     gradient: "from-indigo-600 to-blue-600"
   },
   {
     icon: <FiGlobe className="w-6 h-6" />,
     title: "Multi-Platform",
-    description: "Access from any device - desktop, mobile, or tablet.",
+    description: "Responsive design works seamlessly on desktop, mobile, and tablet devices.",
     gradient: "from-purple-600 to-pink-600"
   },
   {
     icon: <FiBell className="w-6 h-6" />,
-    title: "Smart Notifications",
-    description: "Customize alerts to stay updated without distractions.",
+    title: "Unread Counters",
+    description: "Track unread messages with real-time counters and notification badges.",
     gradient: "from-blue-500 to-indigo-600"
   },
   {
     icon: <FiCheck className="w-6 h-6" />,
-    title: "Message Read Receipts",
-    description: "Know when your messages have been seen by recipients.",
+    title: "Message Status",
+    description: "See when messages are sent, delivered, and read with status indicators.",
     gradient: "from-indigo-500 to-purple-500"
   },
   {
     icon: <FiCloud className="w-6 h-6" />,
-    title: "Cloud Sync",
-    description: "Access your conversations from any device with seamless cloud synchronization.",
+    title: "Media Sharing",
+    description: "Share photos, videos, and files with Cloudinary-powered media storage.",
     gradient: "from-purple-500 to-blue-600"
   },
   {
     icon: <FiVideo className="w-6 h-6" />,
-    title: "HD Video Calls",
-    description: "Crystal clear video calls with friends and family, no matter where they are.",
+    title: "Camera Integration",
+    description: "Capture and share photos directly from your device camera.",
     gradient: "from-indigo-600 to-purple-600"
   },
   {
     icon: <FiFileText className="w-6 h-6" />,
-    title: "File Sharing",
-    description: "Share documents, photos and videos up to 2GB with anyone in your network.",
+    title: "Message Search",
+    description: "Find any message quickly with powerful search and message forwarding.",
     gradient: "from-blue-600 to-indigo-600"
   }
 ];
@@ -142,7 +142,7 @@ export default function Features() {
             transition={{ delay: 0.4 }}
             className="mt-6 max-w-4xl mx-auto text-xl text-gray-600 leading-relaxed"
           >
-            Everything you need for seamless communication, designed to enhance your productivity and connect you with the world
+Experience real-time messaging with group chats, media sharing, and secure authentication - all built with modern web technologies
           </motion.p>
         </motion.div>
 

@@ -33,43 +33,55 @@ export default function PrivacyPage() {
       icon: <FiUser className="w-5 h-5" />,
       title: "Information We Collect",
       items: [
-        "Personal Data: Name, email, contact details when you register",
-        "Usage Data: How you interact with our services (IP, browser, pages visited)",
-        "Cookies: To improve user experience (you can disable them in browser settings)"
+        "Account Data: Email, display name, profile photo when you register",
+        "Messages: Chat messages, media files, and group conversations",
+        "Usage Data: Login times, device information, and app interactions",
+        "Media Files: Photos, videos, and documents shared through our platform"
       ]
     },
     {
       icon: <FiDatabase className="w-5 h-5" />,
-      title: "How We Use Data",
+      title: "How We Use Your Data",
       items: [
-        "Provide and maintain our services",
-        "Improve user experience",
-        "Send important notices (security updates, policy changes)",
-        "Prevent fraud and abuse"
+        "Enable real-time messaging and group chat functionality",
+        "Store and deliver your messages and media files",
+        "Maintain your contact list and group memberships",
+        "Provide message status indicators (sent, delivered, read)",
+        "Enable search functionality within your conversations"
       ]
     },
     {
       icon: <FiShield className="w-5 h-5" />,
-      title: "Data Sharing",
-      description: "We do not sell your data. Limited sharing may occur with:",
+      title: "Data Storage & Sharing",
+      description: "Your data is stored securely using Firebase and Cloudinary services:",
       items: [
-        "Service providers (hosting, analytics)",
-        "Legal compliance (court orders, law enforcement)"
+        "Firebase Firestore: Stores messages, user profiles, and chat data",
+        "Cloudinary: Stores and optimizes your photos and media files",
+        "We do not sell or share your personal data with third parties",
+        "Data may be shared only for legal compliance when required"
       ]
     },
     {
       icon: <FiKey className="w-5 h-5" />,
-      title: "Your Rights",
+      title: "Your Privacy Rights",
       items: [
-        "Access, update, or delete your information",
-        "Opt-out of marketing communications",
-        "Request data portability"
+        "Update your profile information and display name anytime",
+        "Delete your messages (for yourself or everyone in the chat)",
+        "Leave group chats and remove your data from them",
+        "Delete your account and all associated data",
+        "Control who can add you to groups and send you messages"
       ]
     },
     {
       icon: <FiMail className="w-5 h-5" />,
-      title: "Security Measures",
-      description: "We implement encryption (SSL), regular security audits, and access controls to protect your data."
+      title: "Security & Protection",
+      description: "We protect your data with industry-standard security measures:",
+      items: [
+        "Firebase Authentication for secure login and account protection",
+        "HTTPS encryption for all data transmission",
+        "Secure cloud storage with access controls and monitoring",
+        "Regular security updates and vulnerability assessments"
+      ]
     }
   ]
 
@@ -204,7 +216,7 @@ export default function PrivacyPage() {
                 transition={{ delay: 0.8 }}
                 className="text-indigo-100 mb-6 text-lg leading-relaxed"
               >
-                We're here to help clarify any concerns about your privacy and data protection.
+                Have questions about how we handle your messages, media files, or account data? We're here to help.
               </motion.p>
               
               <motion.div
