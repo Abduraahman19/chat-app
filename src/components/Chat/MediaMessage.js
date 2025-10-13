@@ -9,9 +9,11 @@ import {
   FiImage,
   FiVideo,
   FiMaximize2,
-  FiX
+  FiX,
+  FiEye
 } from 'react-icons/fi';
 import FullscreenViewer from './FullscreenViewer';
+import { toast } from 'react-hot-toast';
 
 export default function MediaMessage({ media, isOwn, messageText }) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -32,24 +34,27 @@ export default function MediaMessage({ media, isOwn, messageText }) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleDownload = async () => {
-    try {
-      const response = await fetch(media.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = media.fileName || 'download';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    
+    const downloadUrl = `/api/download-file?url=${encodeURIComponent(media.url)}&filename=${encodeURIComponent(media.fileName)}&contentType=${encodeURIComponent(media.originalType || 'application/octet-stream')}`;
+    
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = media.fileName;
+    a.click();
   };
 
-  if (media.type === 'image') {
+  const handleOpenFile = (e) => {
+    e.stopPropagation();
+    
+    const viewUrl = `/api/download-file?url=${encodeURIComponent(media.url)}&filename=${encodeURIComponent(media.fileName)}&contentType=${encodeURIComponent(media.originalType || 'application/octet-stream')}`;
+    
+    window.open(viewUrl, '_blank');
+  };
+
+  // Handle all image formats
+  if (media.type === 'image' || (media.originalType && media.originalType.startsWith('image/'))) {
     return (
       <div className="relative group max-w-sm">
         <motion.div
@@ -78,7 +83,7 @@ export default function MediaMessage({ media, isOwn, messageText }) {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={handleDownload}
+                onClick={(e) => handleDownload(e)}
                 className="p-2 bg-white/90 text-gray-800 rounded-full shadow-lg hover:bg-white transition-colors"
               >
                 <FiDownload size={16} />
@@ -91,7 +96,7 @@ export default function MediaMessage({ media, isOwn, messageText }) {
         <div className={`mt-2 text-xs ${isOwn ? 'text-white/80' : 'text-gray-500'}`}>
           <div className="flex items-center justify-between">
             <span className="truncate">{media.fileName}</span>
-            <span>{formatFileSize(media.fileSize)}</span>
+            <span>{formatFileSize(media.fileSize || 0)}</span>
           </div>
         </div>
         
@@ -114,7 +119,8 @@ export default function MediaMessage({ media, isOwn, messageText }) {
     );
   }
 
-  if (media.type === 'video') {
+  // Handle all video formats
+  if (media.type === 'video' || (media.originalType && media.originalType.startsWith('video/'))) {
     return (
       <div className="relative group max-w-sm">
         <motion.div
@@ -174,7 +180,35 @@ export default function MediaMessage({ media, isOwn, messageText }) {
     );
   }
 
-  // File type
+  // Handle all other file types (audio, documents, etc.)
+  const getFileIcon = () => {
+    if (media.originalType) {
+      if (media.originalType.startsWith('audio/')) return '🎵';
+      if (media.originalType.startsWith('video/')) return '🎬';
+      if (media.originalType.includes('pdf')) return '📄';
+      if (media.originalType.includes('word') || media.originalType.includes('doc')) return '📝';
+      if (media.originalType.includes('excel') || media.originalType.includes('sheet')) return '📊';
+      if (media.originalType.includes('powerpoint') || media.originalType.includes('presentation')) return '📋';
+      if (media.originalType.includes('zip') || media.originalType.includes('rar')) return '🗜️';
+      if (media.originalType.includes('text')) return '📄';
+    }
+    return '📎';
+  };
+
+  const getFileTypeLabel = () => {
+    if (media.originalType) {
+      if (media.originalType.startsWith('audio/')) return 'Audio';
+      if (media.originalType.startsWith('video/')) return 'Video';
+      if (media.originalType.includes('pdf')) return 'PDF';
+      if (media.originalType.includes('word') || media.originalType.includes('doc')) return 'Document';
+      if (media.originalType.includes('excel') || media.originalType.includes('sheet')) return 'Spreadsheet';
+      if (media.originalType.includes('powerpoint') || media.originalType.includes('presentation')) return 'Presentation';
+      if (media.originalType.includes('zip') || media.originalType.includes('rar')) return 'Archive';
+      if (media.originalType.includes('text')) return 'Text';
+    }
+    return 'File';
+  };
+
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -183,12 +217,20 @@ export default function MediaMessage({ media, isOwn, messageText }) {
           ? 'bg-green-600 text-white' 
           : 'bg-white border border-gray-200 text-gray-800'
       }`}
-      onClick={() => setShowFullscreen(true)}
+      onClick={(e) => {
+        e.stopPropagation();
+        // For PDFs and documents, use file manager to open
+        if (media.originalType && (media.originalType.includes('pdf') || media.originalType.includes('document'))) {
+          handleOpenFile(e);
+        } else {
+          setShowFullscreen(true);
+        }
+      }}
     >
-      <div className={`p-3 rounded-lg mr-4 ${
+      <div className={`p-3 rounded-lg mr-4 flex items-center justify-center text-2xl ${
         isOwn ? 'bg-white/20' : 'bg-gray-100'
       }`}>
-        <FiFile size={24} className={isOwn ? 'text-white' : 'text-gray-600'} />
+        <span>{getFileIcon()}</span>
       </div>
       
       <div className="flex-1 min-w-0">
@@ -196,7 +238,7 @@ export default function MediaMessage({ media, isOwn, messageText }) {
           {media.fileName}
         </h4>
         <p className={`text-sm ${isOwn ? 'text-white/80' : 'text-gray-500'}`}>
-          {formatFileSize(media.fileSize)}
+          {getFileTypeLabel()} • {formatFileSize(media.fileSize)}
         </p>
         
         {/* Message Text for Files */}
@@ -207,18 +249,37 @@ export default function MediaMessage({ media, isOwn, messageText }) {
         )}
       </div>
 
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={handleDownload}
-        className={`p-2 rounded-full transition-colors ${
-          isOwn 
-            ? 'hover:bg-white/20 text-white' 
-            : 'hover:bg-gray-100 text-gray-600'
-        }`}
-      >
-        <FiDownload size={16} />
-      </motion.button>
+      <div className="flex space-x-2">
+        {/* Open File Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => handleOpenFile(e)}
+          className={`p-2 rounded-full transition-colors ${
+            isOwn 
+              ? 'hover:bg-white/20 text-white' 
+              : 'hover:bg-gray-100 text-gray-600'
+          }`}
+          title="Open file"
+        >
+          <FiEye size={16} />
+        </motion.button>
+        
+        {/* Download Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => handleDownload(e)}
+          className={`p-2 rounded-full transition-colors ${
+            isOwn 
+              ? 'hover:bg-white/20 text-white' 
+              : 'hover:bg-gray-100 text-gray-600'
+          }`}
+          title="Download file"
+        >
+          <FiDownload size={16} />
+        </motion.button>
+      </div>
     </motion.div>
   );
 }

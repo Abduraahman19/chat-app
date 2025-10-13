@@ -5,13 +5,13 @@ import { toast } from 'react-hot-toast';
 import { 
   FiImage, 
   FiFile, 
-  FiCamera, 
+ 
   FiX, 
   FiCheck,
   FiMaximize2
 } from 'react-icons/fi';
 import FullscreenViewer from './FullscreenViewer';
-import CameraCapture from './CameraCapture';
+
 
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`;
 
@@ -36,7 +36,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
   const [message, setMessage] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
+
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
@@ -49,7 +49,9 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', 'ml_default');
-    formData.append('resource_type', resourceType);
+    
+    // Only images are supported now
+    formData.append('resource_type', 'image');
     
     try {
       const response = await fetch(CLOUDINARY_UPLOAD_URL, {
@@ -90,7 +92,8 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
-      const resourceType = type === 'image' ? 'image' : 'raw';
+      // Use 'auto' for all files to let Cloudinary handle format detection
+      const resourceType = 'auto';
       const uploadResult = await uploadToCloudinary(file, resourceType);
 
       clearInterval(progressInterval);
@@ -103,9 +106,15 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
         fileName: file.name,
         fileSize: uploadResult.bytes,
         format: uploadResult.format,
+        originalType: file.type,
         ...(type === 'image' && {
           width: uploadResult.width,
           height: uploadResult.height
+        }),
+        ...(type === 'video' && {
+          width: uploadResult.width,
+          height: uploadResult.height,
+          duration: uploadResult.duration
         })
       };
 
@@ -124,12 +133,29 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
 
   const getFileType = (file) => {
     if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.type.startsWith('audio/')) return 'audio';
     return 'file';
+  };
+
+  const isFileTypeSupported = (file) => {
+    const supportedTypes = [
+      // Images only
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'
+    ];
+    
+    return supportedTypes.includes(file.type);
   };
 
   const handleFileChange = (e, expectedType) => {
     const file = e.target.files[0];
     if (file) {
+      // Check if file type is supported
+      if (!isFileTypeSupported(file)) {
+        toast.error(`File type "${file.type || 'unknown'}" is not supported. Please select only Images (JPG, PNG, GIF, WebP).`);
+        return;
+      }
+
       const actualType = getFileType(file);
       if (expectedType && actualType !== expectedType) {
         toast.error(`Please select a ${expectedType} file`);
@@ -138,6 +164,8 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
       
       const maxSizes = {
         image: 10 * 1024 * 1024,
+        video: 50 * 1024 * 1024,
+        audio: 25 * 1024 * 1024,
         file: 15 * 1024 * 1024
       };
 
@@ -145,7 +173,8 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
       
       if (file.size > maxSize) {
         const sizeMB = Math.round(maxSize / (1024 * 1024));
-        toast.error(`${actualType === 'image' ? 'Image' : 'File'} size must be less than ${sizeMB}MB`);
+        const typeNames = { image: 'Image', video: 'Video', audio: 'Audio', file: 'File' };
+        toast.error(`${typeNames[actualType] || 'File'} size must be less than ${sizeMB}MB`);
         return;
       }
 
@@ -172,12 +201,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
     setShowPreview(false);
   };
 
-  const handleCameraCapture = (file, previewUrl) => {
-    setSelectedFile(file);
-    setPreviewUrl(previewUrl);
-    setShowPreview(true);
-    setShowCamera(false);
-  };
+
 
   const handleSendMedia = async () => {
     if (!selectedFile) return;
@@ -195,14 +219,6 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
       color: 'from-green-500 to-emerald-500',
       accept: 'image/*',
       ref: imageInputRef
-    },
-    {
-      id: 'file',
-      label: 'Document',
-      icon: FiFile,
-      color: 'from-blue-500 to-indigo-500',
-      accept: '*/*',
-      ref: fileInputRef
     }
   ];
 
@@ -361,8 +377,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
                       <div className="text-left">
                         <h4 className="font-semibold">{option.label}</h4>
                         <p className="text-sm opacity-90">
-                          {option.id === 'image' && 'Max 10MB - JPG, PNG, WebP'}
-                          {option.id === 'file' && 'Max 15MB - PDF, DOC, TXT'}
+                          Max 10MB - JPG, PNG, GIF, WebP
                         </p>
                       </div>
                     </div>
@@ -370,21 +385,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
                 ))}
               </div>
 
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowCamera(true)}
-                disabled={uploading}
-                className={`w-full mt-3 flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-300 ${
-                  uploading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                <FiCamera className="mr-2" size={20} />
-                <span className="font-medium">Take Photo</span>
-              </motion.button>
+
             </div>
           )}
 
@@ -395,13 +396,6 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
             onChange={(e) => handleFileChange(e, 'image')}
             className="hidden"
             capture="environment"
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="*/*"
-            onChange={(e) => handleFileChange(e, null)}
-            className="hidden"
           />
         </motion.div>
         
@@ -419,13 +413,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
           />
         )}
         
-        {/* Camera Capture */}
-        {showCamera && (
-          <CameraCapture
-            onCapture={handleCameraCapture}
-            onClose={() => setShowCamera(false)}
-          />
-        )}
+
       </motion.div>
     </AnimatePresence>
   );
