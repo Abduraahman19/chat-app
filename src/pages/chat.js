@@ -15,12 +15,15 @@ import { db } from '../utils/firebase';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { FiUsers, FiCamera } from 'react-icons/fi';
-import GroupPhotoUpload from '../components/Chat/GroupPhotoUpload';
+import { FiUsers } from 'react-icons/fi';
+
 import ChatOptionsMenu from '../components/Chat/ChatOptionsMenu';
 import ForwardModal from '../components/Chat/ForwardModal';
 import GroupMembersModal from '../components/Chat/GroupMembersModal';
+import AdminTransferModal from '../components/Chat/AdminTransferModal';
+import AddMemberModal from '../components/Chat/AddMemberModal';
 import FullscreenViewer from '../components/Chat/FullscreenViewer';
+import GroupPhotoUpload from '../components/Chat/GroupPhotoUpload';
 
 import PageLoader from '../components/Layout/PageLoader';
 
@@ -31,14 +34,20 @@ export default function Chat() {
   const [lastSeen, setLastSeen] = useState({});
   const [typingUsers, setTypingUsers] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
-  const [showGroupPhotoUpload, setShowGroupPhotoUpload] = useState(false);
+
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [selectedMessages, setSelectedMessages] = useState([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [showGroupMembersModal, setShowGroupMembersModal] = useState(false);
-  const [showAdminSelectionModal, setShowAdminSelectionModal] = useState(false);
-  const [selectedNewAdmin, setSelectedNewAdmin] = useState(null);
+  const [showAdminTransferModal, setShowAdminTransferModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showOwnershipTransferModal, setShowOwnershipTransferModal] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [starredMessages, setStarredMessages] = useState(new Set());
+  const [blockedContacts, setBlockedContacts] = useState(new Set());
+  const [showGroupPhotoUpload, setShowGroupPhotoUpload] = useState(false);
+
   const [fullscreenMedia, setFullscreenMedia] = useState(null);
   const chatId = activeContact ? 
     (activeContact.isGroup ? activeContact.chatId : [user?.uid, activeContact?.id].sort().join('_')) 
@@ -62,7 +71,7 @@ export default function Chat() {
     }
   }, [activeContact, loading, markChatAsRead]);
 
-  // Track active contact's status and typing
+  // Track active contact's status and typing + real-time group updates
   useEffect(() => {
     if (!activeContact?.id || !chatId) return;
 
@@ -82,6 +91,16 @@ export default function Chat() {
     const unsubscribeChat = onSnapshot(chatRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data();
+        
+        // Update activeContact with real-time group data
+        if (activeContact.isGroup) {
+          setActiveContact(prev => ({
+            ...prev,
+            ...data,
+            chatId: activeContact.chatId
+          }));
+        }
+        
         const typing = data.typing || {};
         
         // Get typing users (exclude current user)
@@ -94,7 +113,7 @@ export default function Chat() {
         const typingNames = typingUserIds.map(uid => {
           if (activeContact.isGroup) {
             // For groups, get name from participantNames or contacts list
-            const participantName = activeContact.participantNames?.[uid];
+            const participantName = data.participantNames?.[uid] || activeContact.participantNames?.[uid];
             if (participantName) return participantName;
             
             // Fallback to contacts list
@@ -147,7 +166,7 @@ export default function Chat() {
       if (diffSeconds < 300) return 'Online';
 
       const options = {
-        hour: '2-digit',
+        hour: 'numeric',
         minute: '2-digit',
         hour12: true
       };
@@ -332,6 +351,60 @@ export default function Chat() {
     setShowGroupMembersModal(true);
   };
 
+  const handleShowAddMember = async () => {
+    if (!activeContact?.isGroup || !user) return;
+    
+    // Get real-time group data to check permissions
+    const chatDoc = await getDoc(doc(db, 'chats', activeContact.chatId));
+    if (!chatDoc.exists()) return;
+    
+    const groupData = chatDoc.data();
+    const isAdmin = groupData.admins?.includes(user.uid) || groupData.superAdmin === user.uid;
+    const hasAddPermission = groupData.addMemberPermissions?.includes(user.uid);
+    
+    if (isAdmin || hasAddPermission) {
+      setShowAddMemberModal(true);
+    } else {
+      toast.error('You do not have permission to add members');
+    }
+  };
+
+  const handleTransferOwnership = () => {
+    if (!activeContact?.isGroup || !user) return;
+    
+    if (activeContact.superAdmin === user.uid) {
+      setShowOwnershipTransferModal(true);
+    } else {
+      toast.error('Only group owner can transfer ownership');
+    }
+  };
+
+  const executeOwnershipTransfer = async (newOwnerId) => {
+    if (!activeContact?.isGroup || !user || !newOwnerId) return;
+    
+    try {
+      const chatRef = doc(db, 'chats', activeContact.chatId);
+      
+      const updateData = {
+        superAdmin: newOwnerId,
+        createdBy: newOwnerId
+      };
+      
+      // Ensure new owner is in admins array
+      const currentAdmins = activeContact.admins || [];
+      if (!currentAdmins.includes(newOwnerId)) {
+        updateData.admins = [...currentAdmins, newOwnerId];
+      }
+      
+      await updateDoc(chatRef, updateData);
+      toast.success('Group ownership transferred successfully');
+      setShowOwnershipTransferModal(false);
+    } catch (error) {
+      console.error('Error transferring ownership:', error);
+      toast.error('Failed to transfer ownership');
+    }
+  };
+
   const handleLeaveGroup = async () => {
     if (!activeContact?.isGroup || !user) return;
     
@@ -340,11 +413,11 @@ export default function Chat() {
     if (!chatDoc.exists()) return;
     
     const groupData = chatDoc.data();
-    const isAdmin = (groupData.admins || []).includes(user.uid);
+    const isAdmin = (groupData.admins || []).includes(user.uid) || groupData.superAdmin === user.uid;
     
     if (isAdmin) {
-      // Show admin selection modal
-      setShowAdminSelectionModal(true);
+      // Show admin transfer modal
+      setShowAdminTransferModal(true);
     } else {
       // Regular member can leave directly
       await executeLeaveGroup(null);
@@ -382,8 +455,11 @@ export default function Chat() {
           [`participantPhotos.${user.uid}`]: null
         };
         
-        // Only update admins if user is actually an admin
-        if (groupData.admins?.includes(user.uid)) {
+        // Handle admin transfer
+        const isCurrentUserAdmin = groupData.admins?.includes(user.uid) || groupData.superAdmin === user.uid;
+        
+        if (isCurrentUserAdmin) {
+          // Remove current user from admins
           updateData.admins = (groupData.admins || []).filter(id => id !== user.uid);
           
           // If user selected a new admin, promote them
@@ -399,13 +475,12 @@ export default function Chat() {
         }
         
         await updateDoc(chatRef, updateData);
-        toast.success('Left group successfully');
+        toast.success('Admin rights transferred and left group successfully');
       }
       
       // Close the chat and modal
       setActiveContact(null);
-      setShowAdminSelectionModal(false);
-      setSelectedNewAdmin(null);
+      setShowAdminTransferModal(false);
     } catch (error) {
       console.error('Error leaving group:', error);
       toast.error('Failed to leave group');
@@ -431,15 +506,7 @@ export default function Chat() {
               <div className="relative p-6 overflow-hidden border-b border-gray-200/50 bg-gradient-to-br from-indigo-50 via-white to-purple-50 backdrop-blur-sm">
                 {/* Animated Background Elements */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  <motion.div
-                    animate={{
-                      x: [0, 20, 0],
-                      y: [0, -10, 0],
-                      rotate: [0, 180, 360]
-                    }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                    className="absolute w-8 h-8 rounded-full top-2 right-5 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 blur-xl"
-                  />
+
                 </div>
 
                 <div className="relative z-10 flex items-center justify-between">
@@ -450,44 +517,34 @@ export default function Chat() {
                           ...activeContact,
                           photoURL: activeContact.isGroup ? activeContact.groupPhoto : activeContact.photoURL
                         }} 
-                        size="lg" 
+                        size="xl" 
                         showOnlineStatus={!activeContact.isGroup}
                         isOnline={isOnline(activeContact.id)}
                       />
-                      {/* Group photo edit button for admins */}
-                      {activeContact.isGroup && activeContact.isAdmin && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                      {/* Camera icon for group admins */}
+                      {activeContact.isGroup && (activeContact.admins?.includes(user?.uid) || activeContact.superAdmin === user?.uid) && (
+                        <div 
                           onClick={() => setShowGroupPhotoUpload(true)}
-                          className="absolute -bottom-1 -right-1 p-1.5 bg-indigo-500 text-white rounded-full shadow-lg hover:bg-indigo-600"
-                          title="Change group photo"
+                          className="absolute -bottom-1 -right-1 p-1.5 bg-blue-500 text-white rounded-full cursor-pointer hover:bg-blue-600 shadow-lg transition-all duration-200 hover:scale-110"
                         >
-                          <FiCamera size={12} />
-                        </motion.button>
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-3L9 1H7L4 3zm8 6a3 3 0 11-6 0 3 3 0 016 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <motion.h2
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center text-xl font-bold text-transparent truncate bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text"
-                      >
+                      <h2 className="flex items-center text-xl font-bold text-transparent truncate bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text">
                         {activeContact.isGroup && (
                           <FiUsers className="mr-2 text-green-600" size={20} />
                         )}
                         {activeContact.isGroup 
                           ? activeContact.displayName 
                           : (activeContact.displayName || activeContact.email.split('@')[0])}
-                      </motion.h2>
+                      </h2>
 
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="flex items-center mt-1 space-x-2"
-                      >
+                      <div className="flex items-center mt-1 space-x-2">
                         {activeContact.isGroup ? (
                           <>
                             <FiUsers size={12} className="text-green-600" />
@@ -498,11 +555,7 @@ export default function Chat() {
                           </>
                         ) : isOnline(activeContact.id) ? (
                           <>
-                            <motion.span
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                              className="w-2 h-2 bg-green-500 rounded-full"
-                            />
+                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                             <p className="text-sm font-medium text-green-600">Online</p>
                           </>
                         ) : (
@@ -513,7 +566,7 @@ export default function Chat() {
                             </p>
                           </>
                         )}
-                      </motion.div>
+                      </div>
                     </div>
                   </div>
 
@@ -529,7 +582,60 @@ export default function Chat() {
                       <MagnifyingGlassIcon className="w-5 h-5" />
                     </motion.button>
 
+                    {/* Block/Unblock Button - Only for individual chats */}
+                    {!activeContact?.isGroup && (
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => {
+                          setBlockedContacts(prev => {
+                            const updated = new Set(prev);
+                            if (updated.has(activeContact.id)) {
+                              updated.delete(activeContact.id);
+                            } else {
+                              updated.add(activeContact.id);
+                            }
+                            return updated;
+                          });
+                        }}
+                        className={`p-2 transition-all duration-200 border border-transparent rounded-xl ${
+                          blockedContacts.has(activeContact?.id)
+                            ? 'text-green-600 hover:text-green-700 hover:bg-green-100'
+                            : 'text-red-500 hover:text-red-700 hover:bg-red-100'
+                        }`}
+                        aria-label={blockedContacts.has(activeContact?.id) ? 'Unblock contact' : 'Block contact'}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {blockedContacts.has(activeContact?.id) ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                          )}
+                        </svg>
+                      </motion.button>
+                    )}
 
+                    {/* Export Chat Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => {
+                        const chatData = messages.map(msg => `${msg.senderId === user?.uid ? 'You' : (activeContact?.participantNames?.[msg.senderId] || 'Unknown')}: ${msg.text || '[Media]'}`).join('\n');
+                        const blob = new Blob([chatData], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `chat_${activeContact?.displayName || activeContact?.email}_${new Date().toISOString().split('T')[0]}.txt`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="p-2 text-gray-500 transition-all duration-200 border border-transparent rounded-xl hover:text-gray-700 hover:bg-gray-100 hover:border-gray-200"
+                      aria-label="Export chat"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </motion.button>
 
                     {/* Close Button */}
                     <motion.button
@@ -561,6 +667,19 @@ export default function Chat() {
                   onMessageSelect={handleMessageSelect}
                   selectionMode={selectionMode}
                   onFullscreenOpen={setFullscreenMedia}
+                  onReply={setReplyingTo}
+                  onStar={(messageId) => {
+                    setStarredMessages(prev => {
+                      const updated = new Set(prev);
+                      if (updated.has(messageId)) {
+                        updated.delete(messageId);
+                      } else {
+                        updated.add(messageId);
+                      }
+                      return updated;
+                    });
+                  }}
+                  key={activeContact?.id || activeContact?.chatId}
                 />
                 
                 <TypingIndicator typingUsers={typingUsers} />
@@ -578,6 +697,13 @@ export default function Chat() {
                   onToggleSelectionMode={handleToggleSelectionMode}
                   onLeaveGroup={handleLeaveGroup}
                   onShowGroupInfo={handleShowGroupInfo}
+                  onShowAddMember={handleShowAddMember}
+                  onTransferOwnership={handleTransferOwnership}
+                  currentUser={user}
+                  replyingTo={replyingTo}
+                  onCancelReply={() => setReplyingTo(null)}
+                  contacts={contacts}
+                  participantNames={activeContact?.participantNames || {}}
                 />
                 
                 {/* Message Search Overlay */}
@@ -598,22 +724,7 @@ export default function Chat() {
                 )}
               </div>
               
-              {/* Group Photo Upload Modal */}
-              {showGroupPhotoUpload && activeContact.isGroup && activeContact.isAdmin && (
-                <GroupPhotoUpload
-                  groupId={activeContact.chatId}
-                  currentPhoto={activeContact.groupPhoto || activeContact.photoURL}
-                  isAdmin={activeContact.isAdmin}
-                  onClose={() => setShowGroupPhotoUpload(false)}
-                  onPhotoUpdate={(newPhoto) => {
-                    setActiveContact(prev => ({ 
-                      ...prev, 
-                      photoURL: newPhoto,
-                      groupPhoto: newPhoto 
-                    }));
-                  }}
-                />
-              )}
+
 
               {/* Forward Modal */}
               {showForwardModal && (
@@ -636,59 +747,53 @@ export default function Chat() {
                 />
               )}
 
-              {/* Admin Selection Modal */}
-              {showAdminSelectionModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                  <div className="bg-white rounded-2xl p-6 w-96 max-h-96 overflow-y-auto">
-                    <h3 className="text-lg font-semibold mb-4">Select New Admin</h3>
-                    <p className="text-sm text-gray-600 mb-4">Choose who will be the new admin before leaving:</p>
-                    
-                    <div className="space-y-2 mb-6">
-                      {activeContact?.participants?.filter(id => id !== user.uid).map(participantId => {
-                        const contact = contacts.find(c => c.id === participantId);
-                        const displayName = activeContact.participantNames?.[participantId] || contact?.displayName || 'Unknown';
-                        
-                        return (
-                          <div
-                            key={participantId}
-                            onClick={() => setSelectedNewAdmin(participantId)}
-                            className={`p-3 rounded-lg cursor-pointer border-2 transition-colors ${
-                              selectedNewAdmin === participantId
-                                ? 'border-indigo-500 bg-indigo-50'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
-                                {displayName[0].toUpperCase()}
-                              </div>
-                              <span className="font-medium">{displayName}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={() => {
-                          setShowAdminSelectionModal(false);
-                          setSelectedNewAdmin(null);
-                        }}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => executeLeaveGroup(selectedNewAdmin)}
-                        disabled={!selectedNewAdmin}
-                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Leave Group
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              {/* Admin Transfer Modal */}
+              {showAdminTransferModal && activeContact?.isGroup && (
+                <AdminTransferModal
+                  isOpen={showAdminTransferModal}
+                  onClose={() => setShowAdminTransferModal(false)}
+                  groupData={activeContact}
+                  contacts={contacts}
+                  onTransferAdmin={executeLeaveGroup}
+                  currentUserId={user?.uid}
+                />
+              )}
+
+              {/* Add Member Modal */}
+              {showAddMemberModal && activeContact?.isGroup && (
+                <AddMemberModal
+                  isOpen={showAddMemberModal}
+                  onClose={() => setShowAddMemberModal(false)}
+                  groupData={activeContact}
+                  contacts={contacts}
+                  currentUserId={user?.uid}
+                />
+              )}
+
+              {/* Ownership Transfer Modal */}
+              {showOwnershipTransferModal && activeContact?.isGroup && (
+                <AdminTransferModal
+                  isOpen={showOwnershipTransferModal}
+                  onClose={() => setShowOwnershipTransferModal(false)}
+                  groupData={activeContact}
+                  contacts={contacts}
+                  onTransferAdmin={executeOwnershipTransfer}
+                  currentUserId={user?.uid}
+                />
+              )}
+
+              {/* Group Photo Upload Modal */}
+              {showGroupPhotoUpload && activeContact?.isGroup && (
+                <GroupPhotoUpload
+                  groupId={activeContact.chatId}
+                  currentPhoto={activeContact.groupPhoto}
+                  isAdmin={activeContact.admins?.includes(user?.uid) || activeContact.superAdmin === user?.uid}
+                  onClose={() => setShowGroupPhotoUpload(false)}
+                  onPhotoUpdate={(photoUrl) => {
+                    setActiveContact(prev => ({ ...prev, groupPhoto: photoUrl }));
+                    setShowGroupPhotoUpload(false);
+                  }}
+                />
               )}
             </>
           ) : (

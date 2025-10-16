@@ -20,7 +20,7 @@ export function useChat(chatId) {
   const [error, setError] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const sendMessage = async (text, media = null) => {
+  const sendMessage = async (text, media = null, replyTo = null) => {
     if (!chatId || (!text.trim() && !media)) return;
 
     try {
@@ -54,6 +54,20 @@ export function useChat(chatId) {
         status: 'sent'
       };
 
+      // Add reply data if replying to a message
+      if (replyTo) {
+        messageData.replyTo = {
+          messageId: replyTo.id,
+          text: replyTo.text || '',
+          senderId: replyTo.senderId
+        };
+        
+        // Only add media if it exists
+        if (replyTo.media) {
+          messageData.replyTo.media = replyTo.media;
+        }
+      }
+
       if (media) {
         messageData.media = media;
       }
@@ -74,6 +88,7 @@ export function useChat(chatId) {
         lastMessage: lastMessageText,
         lastMessageAt: serverTimestamp(),
         lastMessageId: messageRef.id,
+        lastMessageSenderId: auth.currentUser.uid,
         ...unreadUpdates
       });
 

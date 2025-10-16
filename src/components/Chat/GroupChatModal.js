@@ -7,12 +7,15 @@ import { toast } from 'react-hot-toast';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 import ProfilePicture from '../ProfilePicture';
+import GroupPhotoUpload from './GroupPhotoUpload';
 
 const GroupChatModal = ({ isOpen, onClose, contacts = [], onGroupCreated }) => {
   const [groupName, setGroupName] = useState('');
+  const [groupPhoto, setGroupPhoto] = useState('');
   const [selectedContacts, setSelectedContacts] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const { user } = useAuth();
 
   // Filter contacts based on search query - only show individual contacts, not groups
@@ -68,6 +71,8 @@ const GroupChatModal = ({ isOpen, onClose, contacts = [], onGroupCreated }) => {
         participantNames,
         participantPhotos,
         groupName: groupName.trim(),
+        groupPhoto: groupPhoto || '',
+        displayName: groupName.trim(),
         isGroup: true,
         createdBy: user.uid,
         admins: [user.uid], // Multiple admins support
@@ -97,6 +102,7 @@ const GroupChatModal = ({ isOpen, onClose, contacts = [], onGroupCreated }) => {
       
       onClose();
       setGroupName('');
+      setGroupPhoto('');
       setSelectedContacts([]);
       setSearchQuery('');
     } catch (error) {
@@ -145,19 +151,36 @@ const GroupChatModal = ({ isOpen, onClose, contacts = [], onGroupCreated }) => {
 
           {/* Content */}
           <div className="p-6 space-y-6">
-            {/* Group Name Input */}
-            <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">
-                Group Name
-              </label>
-              <input
-                type="text"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Enter group name..."
-                className="w-full px-4 py-3 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                maxLength={50}
-              />
+            {/* Group Photo */}
+            <div className="flex items-center space-x-4">
+              <div className="relative cursor-pointer" onClick={() => setShowPhotoUpload(true)}>
+                <ProfilePicture 
+                  user={{
+                    photoURL: groupPhoto,
+                    displayName: groupName || 'Group'
+                  }} 
+                  size="xl" 
+                  animate={false}
+                />
+                <div className="absolute -bottom-1 -right-1 p-1.5 bg-indigo-500 text-white rounded-full hover:bg-indigo-600 shadow-lg transition-all duration-200 hover:scale-110">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-3L9 1H7L4 3zm8 6a3 3 0 11-6 0 3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Group Name
+                </label>
+                <input
+                  type="text"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Enter group name..."
+                  className="w-full px-4 py-3 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  maxLength={50}
+                />
+              </div>
             </div>
 
             {/* Contact Selection */}
@@ -256,6 +279,20 @@ const GroupChatModal = ({ isOpen, onClose, contacts = [], onGroupCreated }) => {
             </motion.button>
           </div>
         </motion.div>
+        
+        {/* Group Photo Upload Modal */}
+        {showPhotoUpload && (
+          <GroupPhotoUpload
+            groupId={null}
+            currentPhoto={groupPhoto}
+            isAdmin={true}
+            onClose={() => setShowPhotoUpload(false)}
+            onPhotoUpdate={(photoUrl) => {
+              setGroupPhoto(photoUrl);
+              setShowPhotoUpload(false);
+            }}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );

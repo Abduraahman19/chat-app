@@ -16,7 +16,7 @@ import { FaTimes } from "react-icons/fa";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
-const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGroupChat = false, participantNames = {}, contacts = [], isSelected = false, onSelect, selectionMode = false, activeContact = null, onFullscreenOpen }) => {
+const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGroupChat = false, participantNames = {}, contacts = [], isSelected = false, onSelect, selectionMode = false, activeContact = null, onFullscreenOpen, onReply, onStar, onScrollToMessage }) => {
   const { user } = useAuth();
   const isCurrentUser = message.senderId === user?.uid;
 
@@ -198,7 +198,7 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
     if (date.toDate) date = date.toDate();
     const jsDate = new Date(date);
     return jsDate.toLocaleTimeString([], {
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
       hour12: true
     }).toLowerCase();
@@ -231,11 +231,11 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
               {senderInfo?.photoURL ? (
                 <ProfilePicture
                   user={senderInfo}
-                  size="sm"
+                  size="md"
                   animate={false}
                 />
               ) : (
-                <div className="flex items-center justify-center w-8 h-8 text-xs font-bold text-white rounded-full bg-gradient-to-br from-indigo-500 to-purple-500">
+                <div className="flex items-center justify-center w-10 h-10 text-sm font-bold text-white rounded-full bg-gradient-to-br from-indigo-500 to-purple-500">
                   {(participantNames[message.senderId] || senderInfo?.displayName || 'U')[0].toUpperCase()}
                 </div>
               )}
@@ -342,6 +342,23 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
                           <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-50/50 via-transparent to-purple-50/50" />
 
                           <div className="relative z-10">
+                            {/* Reply to message */}
+                            <motion.button
+                              whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                if (onReply) onReply(message);
+                                setShowDeleteOptions(false);
+                                setShowMenu(false);
+                              }}
+                              className="flex items-center w-full px-4 py-3 text-sm font-medium text-left text-gray-700 transition-all duration-200 border-b hover:bg-indigo-50 border-gray-100/50"
+                            >
+                              <svg className="w-4 h-4 mr-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                              Reply
+                            </motion.button>
+
                             {/* Copy message - Show for all messages with text */}
                             {message.text && (
                               <motion.button
@@ -354,6 +371,23 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
                                 Copy message
                               </motion.button>
                             )}
+
+                            {/* Star message */}
+                            <motion.button
+                              whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                if (onStar) onStar(message.id);
+                                setShowDeleteOptions(false);
+                                setShowMenu(false);
+                              }}
+                              className="flex items-center w-full px-4 py-3 text-sm font-medium text-left text-gray-700 transition-all duration-200 border-b hover:bg-indigo-50 border-gray-100/50"
+                            >
+                              <svg className="w-4 h-4 mr-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                              Star
+                            </motion.button>
 
                             <motion.button
                               whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
@@ -491,6 +525,23 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
                           <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-50/50 via-transparent to-purple-50/50" />
 
                           <div className="relative z-10">
+                            {/* Reply to message */}
+                            <motion.button
+                              whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                if (onReply) onReply(message);
+                                setShowDeleteOptions(false);
+                                setShowMenu(false);
+                              }}
+                              className="flex items-center w-full px-4 py-3 text-sm font-medium text-left text-gray-700 transition-all duration-200 border-b hover:bg-indigo-50 border-gray-100/50"
+                            >
+                              <svg className="w-4 h-4 mr-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                              Reply
+                            </motion.button>
+
                             {/* Copy message - Show for all messages with text */}
                             {message.text && (
                               <motion.button
@@ -503,6 +554,23 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
                                 Copy message
                               </motion.button>
                             )}
+
+                            {/* Star message */}
+                            <motion.button
+                              whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                if (onStar) onStar(message.id);
+                                setShowDeleteOptions(false);
+                                setShowMenu(false);
+                              }}
+                              className="flex items-center w-full px-4 py-3 text-sm font-medium text-left text-gray-700 transition-all duration-200 border-b hover:bg-indigo-50 border-gray-100/50"
+                            >
+                              <svg className="w-4 h-4 mr-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                              Star
+                            </motion.button>
 
                             <motion.button
                               whileHover={{ x: 2, backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
@@ -573,6 +641,28 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
 
             {/* Message content */}
             <div className="relative z-10">
+              {/* Reply preview - WhatsApp style */}
+              {message.replyTo && (
+                <div 
+                  onClick={() => onScrollToMessage && onScrollToMessage(message.replyTo.messageId)}
+                  className={`mb-2 p-2 rounded-lg border-l-4 cursor-pointer hover:opacity-80 transition-opacity ${
+                    isCurrentUser 
+                      ? 'bg-white/20 border-white/50 hover:bg-white/30' 
+                      : 'bg-gray-100 border-indigo-500 hover:bg-gray-200'
+                  }`}>
+                  <p className={`text-xs font-semibold ${
+                    isCurrentUser ? 'text-white/90' : 'text-indigo-600'
+                  }`}>
+                    {message.replyTo.senderId === user?.uid ? 'You' : (participantNames[message.replyTo.senderId] || 'Unknown')}
+                  </p>
+                  <p className={`text-xs mt-1 truncate ${
+                    isCurrentUser ? 'text-white/80' : 'text-gray-600'
+                  }`}>
+                    {message.replyTo.media ? '📷 Photo' : message.replyTo.text}
+                  </p>
+                </div>
+              )}
+              
               {/* Sender name for group chats - Always show */}
               {isGroupChat && !isCurrentUser && (
                 <p className="mb-1 text-xs font-medium text-gray-600">

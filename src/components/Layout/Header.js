@@ -228,7 +228,7 @@ export default function Header() {
                       <div className="relative">
                         <ProfilePicture 
                           user={user} 
-                          size="md" 
+                          size="lg" 
                           showOnlineStatus={true}
                           isOnline={true}
                           onClick={() => setIsMenuOpen(!isMenuOpen)}

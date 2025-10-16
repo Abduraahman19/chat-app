@@ -11,7 +11,7 @@ import {
   FiMaximize2
 } from 'react-icons/fi';
 import FullscreenViewer from './FullscreenViewer';
-import ImageEditor from './ImageEditor';
+
 
 
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`;
@@ -39,7 +39,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
   const [showFullscreen, setShowFullscreen] = useState(false);
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
+
 
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -271,14 +271,12 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
         >
           <div className="flex items-center justify-between p-6 border-b border-gray-100/50 bg-gradient-to-r from-indigo-50/30 to-purple-50/30">
             <h3 className="text-xl font-semibold text-gray-800">Share Photo</h3>
-            <motion.button
-              whileHover={{ scale: 1.05, rotate: 90 }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={onClose}
-              className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200"
+              className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105 hover:rotate-90"
             >
               <FiX size={18} />
-            </motion.button>
+            </button>
           </div>
 
           {uploading && (
@@ -321,20 +319,18 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
                       <img 
                         src={previewUrl} 
                         alt="Preview" 
-                        className="object-cover w-full transition-transform duration-300 cursor-pointer max-h-80 group-hover:scale-105"
+                        className="object-cover w-full cursor-pointer max-h-80"
                         onClick={() => setShowFullscreen(true)}
                       />
                       <div className="absolute inset-0 transition-all duration-300 opacity-0 bg-gradient-to-t from-black/20 via-transparent to-transparent group-hover:opacity-100">
                         <div className="absolute flex space-x-2 top-3 right-3">
 
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                          <button
                             onClick={() => setShowFullscreen(true)}
-                            className="p-2.5 bg-white/90 text-gray-700 rounded-full shadow-lg backdrop-blur-sm hover:bg-white transition-colors"
+                            className="p-2.5 bg-white/90 text-gray-700 rounded-full shadow-lg backdrop-blur-sm hover:bg-white transition-all hover:scale-105"
                           >
                             <FiMaximize2 size={16} />
-                          </motion.button>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -370,32 +366,20 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
               </motion.div>
               
               <div className="flex space-x-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={handleCancelPreview}
-                  className="flex-1 px-4 py-3 font-medium text-gray-700 transition-all duration-200 border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400"
+                  className="flex-1 px-4 py-3 font-medium text-gray-700 transition-all duration-200 border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 hover:scale-102"
                 >
                   Cancel
-                </motion.button>
-<motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowEditor(true)}
-                  className="flex items-center justify-center px-4 py-3 font-medium text-white transition-all duration-200 shadow-lg bg-gradient-to-r from-orange-500 to-red-500 rounded-xl hover:from-orange-600 hover:to-red-600"
-                >
-                  <FiEdit3 className="mr-2" size={16} />
-                  Edit
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+
+                <button
                   onClick={handleSendMedia}
                   disabled={uploading}
-                  className="flex-1 px-4 py-3 font-medium text-white transition-all duration-200 shadow-lg bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl hover:from-indigo-600 hover:to-purple-600 disabled:opacity-50"
+                  className="flex-1 px-4 py-3 font-medium text-white transition-all duration-200 shadow-lg bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl hover:from-indigo-600 hover:to-purple-600 disabled:opacity-50 hover:scale-102"
                 >
                   Send Photo
-                </motion.button>
+                </button>
               </div>
             </div>
           )}
@@ -446,25 +430,16 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
 
               <div className="grid grid-cols-1 gap-3">
                 {mediaOptions.map((option, index) => (
-                  <motion.button
+                  <button
                     key={option.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1, type: "spring", stiffness: 300 }}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={() => option.ref.current?.click()}
                     disabled={uploading}
-                    className={`flex items-center p-5 rounded-2xl bg-gradient-to-r ${option.color} text-white shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden group ${
+                    className={`flex items-center p-5 rounded-2xl bg-gradient-to-r ${option.color} text-white shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden group hover:scale-102 hover:-translate-y-0.5 ${
                       uploading ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
                     {/* Enhanced shine effect */}
-                    <motion.div
-                      animate={{ x: [-120, 120] }}
-                      transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 4 }}
-                      className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent group-hover:via-white/35"
-                    />
+
                     
                     <div className="relative z-10 flex items-center w-full">
                       <div className="p-3 mr-4 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -480,7 +455,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
                         →
                       </div>
                     </div>
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             </div>
@@ -512,59 +487,7 @@ export default function MediaUpload({ onMediaSelect, onClose }) {
           </div>
         )}
 
-        {/* WhatsApp-Style Image Editor */}
-        {showEditor && selectedFile && (
-          <div className="fixed inset-0 z-[99999]" style={{ zIndex: 99999 }}>
-            <ImageEditor
-              image={{
-                url: previewUrl,
-                fileName: selectedFile.name
-              }}
-              onSend={async (caption, editedBlob) => {
-                try {
-                  const editedFile = new File([editedBlob], selectedFile.name, { type: 'image/jpeg' });
-                  
-                  setUploading(true);
-                  setUploadProgress(0);
-                  
-                  const progressInterval = setInterval(() => {
-                    setUploadProgress(prev => Math.min(prev + 10, 90));
-                  }, 200);
-                  
-                  const uploadResult = await uploadToCloudinary(editedFile, 'auto');
-                  
-                  clearInterval(progressInterval);
-                  setUploadProgress(100);
-                  
-                  const mediaData = {
-                    type: 'image',
-                    url: uploadResult.url,
-                    publicId: uploadResult.publicId,
-                    fileName: editedFile.name,
-                    fileSize: uploadResult.bytes,
-                    format: uploadResult.format,
-                    originalType: editedFile.type,
-                    width: uploadResult.width,
-                    height: uploadResult.height
-                  };
-                  
-                  setTimeout(() => {
-                    onMediaSelect(mediaData, caption);
-                    onClose();
-                  }, 500);
-                  
-                  setShowEditor(false);
-                } catch (error) {
-                  console.error('Error uploading edited image:', error);
-                  toast.error('Failed to upload edited image');
-                  setUploading(false);
-                  setUploadProgress(0);
-                }
-              }}
-              onClose={() => setShowEditor(false)}
-            />
-          </div>
-        )}
+
 
         
 

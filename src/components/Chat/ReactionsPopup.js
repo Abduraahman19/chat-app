@@ -82,9 +82,9 @@ const ReactionsPopup = ({ reactions, participantNames, contacts, user, isOpen, o
               >
                 <div className="flex items-center space-x-2.5">
                   {userInfo.photoURL ? (
-                    <ProfilePicture user={userInfo} size="sm" animate={false} />
+                    <ProfilePicture user={userInfo} size="md" animate={false} />
                   ) : (
-                    <div className="flex items-center justify-center w-8 h-8 text-sm font-bold text-white rounded-full bg-gradient-to-br from-indigo-500 to-purple-500">
+                    <div className="flex items-center justify-center w-10 h-10 text-base font-bold text-white rounded-full bg-gradient-to-br from-indigo-500 to-purple-500">
                       {(userInfo.displayName || 'U')[0].toUpperCase()}
                     </div>
                   )}

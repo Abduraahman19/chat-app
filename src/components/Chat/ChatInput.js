@@ -12,10 +12,11 @@ import Picker from '@emoji-mart/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MediaUpload from './MediaUpload';
 import CameraCapture from './CameraCapture';
+import ReplyPreview from './ReplyPreview';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
-export default function ChatInput({ sendMessage, onNewContact, chatId, activeContact, selectedMessages, onClearChat, onDeleteSelected, onForwardSelected, onClearSelection, onToggleSelectionMode, onLeaveGroup, onShowGroupInfo }) {
+export default function ChatInput({ sendMessage, onNewContact, chatId, activeContact, selectedMessages, onClearChat, onDeleteSelected, onForwardSelected, onClearSelection, onToggleSelectionMode, onLeaveGroup, onShowGroupInfo, onShowAddMember, onTransferOwnership, currentUser, replyingTo, onCancelReply, contacts, participantNames }) {
   const [message, setMessage] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
@@ -25,6 +26,7 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [draft, setDraft] = useState('');
   const { user, addContact } = useAuth();
   const inputRef = useRef(null);
   const emojiPickerRef = useRef(null);
@@ -96,6 +98,27 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
     }, 1500); // Reduced to 1.5 seconds for better UX
   };
 
+  // Save draft when typing
+  useEffect(() => {
+    if (message && chatId) {
+      const timer = setTimeout(() => {
+        setDraft(message);
+        localStorage.setItem(`draft_${chatId}`, message);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [message, chatId]);
+
+  // Load draft on chat change
+  useEffect(() => {
+    if (chatId) {
+      const savedDraft = localStorage.getItem(`draft_${chatId}`);
+      if (savedDraft && !message) {
+        setMessage(savedDraft);
+      }
+    }
+  }, [chatId]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     // Trim only checks if message is empty, but preserves actual whitespace
@@ -103,6 +126,9 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
 
     const messageToSend = message; // Preserve all formatting including newlines
     setMessage('');
+    
+    // Clear draft
+    localStorage.removeItem(`draft_${chatId}`);
     
     // Stop typing indicator immediately when sending
     setIsTyping(false);
@@ -113,7 +139,8 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
 
     setIsSending(true);
     try {
-      await sendMessage(messageToSend);
+      await sendMessage(messageToSend, null, replyingTo);
+      if (onCancelReply) onCancelReply();
     } catch (error) {
       setMessage(messageToSend); // Restore with original formatting
       toast.error(error.message);
@@ -156,6 +183,12 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
     
     setMessage(newValue);
     
+    // Text formatting
+    const formattedText = newValue
+      .replace(/\*([^*]+)\*/g, '<b>$1</b>') // Bold
+      .replace(/_([^_]+)_/g, '<i>$1</i>') // Italic
+      .replace(/~([^~]+)~/g, '<s>$1</s>'); // Strikethrough
+    
     // Only trigger typing if user is actually typing (adding characters)
     if (newValue.length > oldValue.length) {
       handleTyping();
@@ -189,6 +222,17 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
 
   return (
     <div className="relative p-4 border-t border-gray-200 bg-sky-50">
+      {/* Reply Preview */}
+      <AnimatePresence>
+        {replyingTo && (
+          <ReplyPreview 
+            replyingTo={replyingTo} 
+            onCancel={onCancelReply}
+            contacts={contacts}
+            participantNames={participantNames}
+          />
+        )}
+      </AnimatePresence>
       <style jsx global>{`
         .hide-scrollbar {
           -ms-overflow-style: none;
@@ -246,6 +290,7 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
         onSubmit={handleSubmit}
         className="relative flex items-center p-3 overflow-hidden border shadow-xl bg-white/80 backdrop-blur-sm rounded-2xl border-white/50"
       >
+
         {/* Gradient Overlay */}
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-indigo-50/30 via-transparent to-purple-50/30" />
         
@@ -591,6 +636,44 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
                         </svg>
                         <span>Group Info</span>
                       </button>
+                      
+                      {/* Only show Add Member if user has permission */}
+                      {(activeContact.admins?.includes(currentUser?.uid) || 
+                        activeContact.superAdmin === currentUser?.uid || 
+                        activeContact.addMemberPermissions?.includes(currentUser?.uid)) && (
+                        <button
+                          onClick={() => {
+                            if (onShowAddMember) {
+                              onShowAddMember();
+                            }
+                            setShowOptionsMenu(false);
+                          }}
+                          className="flex items-center w-full px-4 py-3 space-x-3 text-left text-green-600 transition-colors hover:bg-green-50"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                          </svg>
+                          <span>Add Member</span>
+                        </button>
+                      )}
+                      
+                      {/* Only show Transfer Ownership for super admin */}
+                      {activeContact.superAdmin === currentUser?.uid && (
+                        <button
+                          onClick={() => {
+                            if (onTransferOwnership) {
+                              onTransferOwnership();
+                            }
+                            setShowOptionsMenu(false);
+                          }}
+                          className="flex items-center w-full px-4 py-3 space-x-3 text-left text-purple-600 transition-colors hover:bg-purple-50"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                          <span>Transfer Ownership</span>
+                        </button>
+                      )}
                       
                       <button
                         onClick={() => {

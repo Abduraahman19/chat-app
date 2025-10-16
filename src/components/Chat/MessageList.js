@@ -40,7 +40,7 @@ export const getUsernameFromEmail = (email) => {
   return email.split('@')[0];
 };
 
-export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [], activeContact = null, highlightedMessageId = null, onScrollToMessage, selectedMessages = [], onMessageSelect, selectionMode = false, onFullscreenOpen }) {
+export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [], activeContact = null, highlightedMessageId = null, onScrollToMessage, selectedMessages = [], onMessageSelect, selectionMode = false, onFullscreenOpen, onReply, onStar }) {
   const { user } = useAuth();
   const [visibleMessages, setVisibleMessages] = useState(new Set());
   const observerRef = useRef(null);
@@ -75,8 +75,9 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
-  const messageRefs = useRef({});
 
+  const messageRefs = useRef({});
+  const lastMessageCountRef = useRef(0);
   const [initialLoad, setInitialLoad] = useState(true);
 
   // Intersection Observer for marking messages as read
@@ -152,6 +153,7 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
     const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 100;
     setIsAutoScrolling(isNearBottom);
+
   };
 
   const scrollToBottom = (behavior = 'smooth') => {
@@ -161,11 +163,26 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
     setIsAutoScrolling(true);
   };
 
-  // Auto-scroll only when opening new chat
+  // Auto-scroll for new messages (WhatsApp behavior)
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current) {
+      const newMessages = messages.slice(lastMessageCountRef.current);
+      const hasNewFromOthers = newMessages.some(msg => msg.senderId !== user?.uid);
+      
+      if (isAutoScrolling) {
+        // Auto-scroll if user is at bottom
+        scrollToBottom('smooth');
+      }
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages, isAutoScrolling, user?.uid]);
+
+  // Auto-scroll when opening new chat
   useEffect(() => {
     if (activeContact) {
       const timer = setTimeout(() => {
         scrollToBottom('auto');
+        setIsAutoScrolling(true);
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -188,13 +205,33 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
     }
   }, [highlightedMessageId]);
 
+  // Handle scroll to message from reply click
+  const handleScrollToMessage = (messageId) => {
+    if (messageRefs.current[messageId]) {
+      messageRefs.current[messageId].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+      
+      // Highlight the message temporarily
+      if (onScrollToMessage) {
+        onScrollToMessage(messageId);
+        // Auto-remove highlight after 2 seconds
+        setTimeout(() => {
+          onScrollToMessage(null);
+        }, 2000);
+      }
+    }
+  };
+
 
 
   return (
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-indigo-50/30 via-white/50 to-purple-50/30 backdrop-blur-sm"
+      className="relative flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-indigo-50/30 via-white/50 to-purple-50/30 backdrop-blur-sm"
       style={{ 
         backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h30v30H0V0zm30 30h30v30H30V30z' fill='%23e0e7ff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E')",
         scrollbarWidth: 'none', 
@@ -312,6 +349,9 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
                       selectionMode={selectionMode}
                       activeContact={activeContact}
                       onFullscreenOpen={onFullscreenOpen}
+                      onReply={onReply}
+                      onStar={onStar}
+                      onScrollToMessage={handleScrollToMessage}
                     />
                   </div>
                 </motion.div>
@@ -322,6 +362,8 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
 
         <div ref={messagesEndRef} className="h-6" />
       </div>
+
+
 
     </div>
   );

@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import { doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 import ProfilePicture from '../ProfilePicture';
+import GroupPhotoUpload from './GroupPhotoUpload';
 
 export default function GroupMembersModal({ 
   isOpen, 
@@ -16,6 +17,7 @@ export default function GroupMembersModal({
 }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [liveGroupData, setLiveGroupData] = useState(groupData);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -136,9 +138,12 @@ export default function GroupMembersModal({
         [`participantPhotos.${memberId}`]: null
       };
       
-      // Only remove from admins if they are actually an admin
+      // Remove from admins and addMemberPermissions if they have those roles
       if (liveGroupData.admins?.includes(memberId)) {
         updateData.admins = arrayRemove(memberId);
+      }
+      if (liveGroupData.addMemberPermissions?.includes(memberId)) {
+        updateData.addMemberPermissions = arrayRemove(memberId);
       }
       
       await updateDoc(chatRef, updateData);
@@ -146,6 +151,30 @@ export default function GroupMembersModal({
     } catch (error) {
       console.error('Error removing member:', error);
       toast.error('Failed to remove member');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleToggleAddMemberPermission = async (memberId) => {
+    if (!isSuperAdmin) {
+      toast.error('Only group creator can manage add member permissions');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const chatRef = doc(db, 'chats', liveGroupData.chatId);
+      const hasPermission = liveGroupData.addMemberPermissions?.includes(memberId);
+      
+      await updateDoc(chatRef, {
+        addMemberPermissions: hasPermission ? arrayRemove(memberId) : arrayUnion(memberId)
+      });
+      
+      toast.success(hasPermission ? 'Add member permission removed' : 'Add member permission granted');
+    } catch (error) {
+      console.error('Error updating add member permission:', error);
+      toast.error('Failed to update permission');
     } finally {
       setIsUpdating(false);
     }
@@ -173,13 +202,30 @@ export default function GroupMembersModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden"
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <UserGroupIcon className="w-6 h-6 text-indigo-600" />
+              <div className="relative">
+                <ProfilePicture 
+                  user={{
+                    photoURL: liveGroupData.groupPhoto,
+                    displayName: liveGroupData.displayName
+                  }} 
+                  size="xl" 
+                  animate={false}
+                />
+                {isAdmin && (
+                  <div 
+                    onClick={() => setShowPhotoUpload(true)}
+                    className="absolute -bottom-1 -right-1 p-1.5 bg-blue-500 text-white rounded-full cursor-pointer hover:bg-blue-600 shadow-lg transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2h-3L9 1H7L4 3zm8 6a3 3 0 11-6 0 3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">Group Members</h2>
@@ -217,7 +263,7 @@ export default function GroupMembersModal({
                           photoURL: memberInfo.photoURL,
                           displayName: memberInfo.name 
                         }} 
-                        size="md" 
+                        size="lg" 
                         animate={false}
                       />
                       <div>
@@ -238,13 +284,18 @@ export default function GroupMembersModal({
                           ) : (
                             <span className="text-xs text-gray-500">Member</span>
                           )}
+                          {liveGroupData.addMemberPermissions?.includes(memberId) && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Can Add Members
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* Admin Actions */}
                     {!isCurrentUser && (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
                         {/* Make/Remove Admin - Only Super Admin can do this */}
                         {isSuperAdmin && !isMemberSuperAdmin && (
                           <motion.button
@@ -252,13 +303,30 @@ export default function GroupMembersModal({
                             whileTap={{ scale: 0.95 }}
                             onClick={() => isMemberAdmin ? handleRemoveAdmin(memberId) : handleMakeAdmin(memberId)}
                             disabled={isUpdating}
-                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
                               isMemberAdmin
                                 ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
                                 : 'bg-green-100 text-green-700 hover:bg-green-200'
                             } disabled:opacity-50`}
                           >
                             {isMemberAdmin ? 'Remove Admin' : 'Make Admin'}
+                          </motion.button>
+                        )}
+
+                        {/* Add Member Permission - Only Super Admin can do this */}
+                        {isSuperAdmin && !isMemberSuperAdmin && !isMemberAdmin && (
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleToggleAddMemberPermission(memberId)}
+                            disabled={isUpdating}
+                            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                              liveGroupData.addMemberPermissions?.includes(memberId)
+                                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                            } disabled:opacity-50`}
+                          >
+                            {liveGroupData.addMemberPermissions?.includes(memberId) ? 'Remove Add Perm' : 'Give Add Perm'}
                           </motion.button>
                         )}
 
@@ -269,7 +337,7 @@ export default function GroupMembersModal({
                             whileTap={{ scale: 0.95 }}
                             onClick={() => handleRemoveMember(memberId)}
                             disabled={isUpdating}
-                            className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                            className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
                           >
                             Remove
                           </motion.button>
@@ -294,6 +362,20 @@ export default function GroupMembersModal({
             </motion.button>
           </div>
         </motion.div>
+        
+        {/* Group Photo Upload Modal */}
+        {showPhotoUpload && (
+          <GroupPhotoUpload
+            groupId={liveGroupData.chatId}
+            currentPhoto={liveGroupData.groupPhoto}
+            isAdmin={isAdmin}
+            onClose={() => setShowPhotoUpload(false)}
+            onPhotoUpdate={(photoUrl) => {
+              setLiveGroupData(prev => ({ ...prev, groupPhoto: photoUrl }));
+              setShowPhotoUpload(false);
+            }}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );

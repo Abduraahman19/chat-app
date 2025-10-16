@@ -5,7 +5,7 @@ import { getUsernameFromEmail } from '../../utils/helpers';
 import ProfilePicture from '../ProfilePicture';
 import { useState, useEffect } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
-import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, getDocs, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiSearch, FiMoreVertical, FiEdit, FiCheck, FiPlus, FiUsers, FiMessageCircle, FiUser, FiClock, FiWifi, FiWifiOff } from 'react-icons/fi';
@@ -29,28 +29,45 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   const [contactCustomNames, setContactCustomNames] = useState({});
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [lastMessageTimes, setLastMessageTimes] = useState({});
+  const [lastMessages, setLastMessages] = useState({});
+  const [typingStatuses, setTypingStatuses] = useState({});
+  const [pinnedChats, setPinnedChats] = useState(new Set());
+  const [mutedChats, setMutedChats] = useState(new Set());
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [filterType, setFilterType] = useState('all'); // all, unread, groups
 
-  // Filter and sort contacts - sort by last message time, then alphabetically
+  // Filter and sort contacts - WhatsApp style
   const filteredContacts = contacts
     .filter(contact => {
       const searchLower = searchQuery.toLowerCase();
       const displayName = contactCustomNames[contact.id] || contact.displayName || getUsernameFromEmail(contact.email);
-      return (
-        contact.email.toLowerCase().includes(searchLower) ||
-        displayName.toLowerCase().includes(searchLower))
+      const matchesSearch = contact.email.toLowerCase().includes(searchLower) || displayName.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+      
+      // Apply filters
+      if (filterType === 'unread') {
+        return (unreadCounts[contact.id] || 0) > 0;
+      }
+      if (filterType === 'groups') {
+        return contact.isGroup;
+      }
+      return true;
     })
     .sort((a, b) => {
-      // Sort by last message time (most recent first), then alphabetically
+      // WhatsApp sorting: Pinned first, then by last message time
+      const aPinned = pinnedChats.has(a.id);
+      const bPinned = pinnedChats.has(b.id);
+      
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      
+      // Within same pin status, sort by last message time
       const lastMessageA = lastMessageTimes[a.id] || 0;
       const lastMessageB = lastMessageTimes[b.id] || 0;
       
-      console.log(`Sorting: ${a.email} (${new Date(lastMessageA)}) vs ${b.email} (${new Date(lastMessageB)})`);
-      
       if (lastMessageA !== lastMessageB) {
-        const result = lastMessageB - lastMessageA; // Most recent first
-        console.log(`Sort result: ${result}`);
-        return result;
+        return lastMessageB - lastMessageA; // Most recent first
       }
       
       // If no messages or same time, sort alphabetically
@@ -142,41 +159,85 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
     return () => unsubscribes.forEach(unsubscribe => unsubscribe());
   }, [contacts]);
 
-  // Track last message times for each contact
+  // Track last messages from chats collection
   useEffect(() => {
     if (!user?.uid || !contacts.length) return;
 
     const unsubscribes = [];
 
     contacts.forEach(contact => {
-      const chatId = [user.uid, contact.id].sort().join('_');
-      const messagesRef = collection(db, 'chats', chatId, 'messages');
-      const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+      const chatId = contact.isGroup ? contact.chatId : [user.uid, contact.id].sort().join('_');
+      const chatRef = doc(db, 'chats', chatId);
 
-      const unsubscribe = onSnapshot(q,
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const lastMessage = snapshot.docs[0].data();
-            const timestamp = lastMessage.timestamp?.toDate ? lastMessage.timestamp.toDate().getTime() : Date.now();
-            
-            console.log(`Last message time for ${contact.email}:`, new Date(timestamp));
-            
-            setLastMessageTimes(prev => {
-              const updated = {
+      const unsubscribe = onSnapshot(chatRef,
+        (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            if (data.lastMessage || data.lastMessageAt) {
+              const timestamp = data.lastMessageAt?.toDate ? data.lastMessageAt.toDate().getTime() : Date.now();
+              
+              setLastMessageTimes(prev => ({
                 ...prev,
                 [contact.id]: timestamp
-              };
-              console.log('Updated lastMessageTimes:', updated);
-              return updated;
-            });
-          } else {
-            console.log(`No messages found for ${contact.email}`);
+              }));
+              
+              setLastMessages(prev => ({
+                ...prev,
+                [contact.id]: {
+                  text: data.lastMessage || 'No messages yet',
+                  senderId: data.lastMessageSenderId,
+                  time: data.lastMessageAt
+                }
+              }));
+            }
           }
         },
         (error) => {
           console.error("Error fetching last message:", error);
         }
       );
+
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => unsubscribes.forEach(unsubscribe => unsubscribe());
+  }, [contacts, user?.uid]);
+
+  // Track typing statuses
+  useEffect(() => {
+    if (!user?.uid || !contacts.length) return;
+
+    const unsubscribes = [];
+
+    contacts.forEach(contact => {
+      const chatId = contact.isGroup ? contact.chatId : [user.uid, contact.id].sort().join('_');
+      const chatRef = doc(db, 'chats', chatId);
+
+      const unsubscribe = onSnapshot(chatRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          const typing = data.typing || {};
+          
+          // Get typing users (exclude current user)
+          const typingUserIds = Object.keys(typing).filter(uid => 
+            uid !== user?.uid && typing[uid] && 
+            (new Date() - typing[uid].toDate()) < 3000
+          );
+          
+          if (typingUserIds.length > 0) {
+            setTypingStatuses(prev => ({
+              ...prev,
+              [contact.id]: typingUserIds
+            }));
+          } else {
+            setTypingStatuses(prev => {
+              const updated = { ...prev };
+              delete updated[contact.id];
+              return updated;
+            });
+          }
+        }
+      });
 
       unsubscribes.push(unsubscribe);
     });
@@ -309,12 +370,6 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
   const handleContactClick = async (contact) => {
     setActiveContact(contact);
 
-    // Update last interaction time for sorting
-    setLastMessageTimes(prev => ({
-      ...prev,
-      [contact.id]: Date.now()
-    }));
-
     // Reset unread count when contact is selected
     if (unreadCounts[contact.id] > 0) {
       try {
@@ -326,6 +381,47 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
       } catch (error) {
         console.error("Error resetting unread count:", error);
       }
+    }
+  };
+
+  const handlePinChat = (contactId) => {
+    setPinnedChats(prev => {
+      const updated = new Set(prev);
+      if (updated.has(contactId)) {
+        updated.delete(contactId);
+      } else {
+        updated.add(contactId);
+      }
+      return updated;
+    });
+  };
+
+  const handleMuteChat = (contactId) => {
+    setMutedChats(prev => {
+      const updated = new Set(prev);
+      if (updated.has(contactId)) {
+        updated.delete(contactId);
+      } else {
+        updated.add(contactId);
+      }
+      return updated;
+    });
+  };
+
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+    
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now - date) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    } else if (diffInHours < 168) { // 7 days
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days[date.getDay()];
+    } else {
+      return date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
     }
   };
 
@@ -444,30 +540,56 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
-          className="relative"
+          className="space-y-3"
         >
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <FiSearch className="h-5 w-5 text-gray-400" />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <FiSearch className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search contacts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition-all duration-300 shadow-sm text-gray-700 placeholder-gray-400"
+            />
+            {searchQuery && (
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <FiX size={18} />
+              </motion.button>
+            )}
           </div>
-          <input
-            type="text"
-            placeholder="Search contacts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition-all duration-300 shadow-sm text-gray-700 placeholder-gray-400"
-          />
-          {searchQuery && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              <FiX size={18} />
-            </motion.button>
-          )}
+          
+          {/* Filter Tabs */}
+          <div className="flex space-x-2">
+            {[
+              { id: 'all', label: 'All', icon: FiMessageCircle },
+              { id: 'unread', label: 'Unread', icon: FiMessageCircle },
+              { id: 'groups', label: 'Groups', icon: FiUsers }
+            ].map(filter => (
+              <motion.button
+                key={filter.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setFilterType(filter.id)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === filter.id
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white/60 text-gray-600 hover:bg-white/80'
+                }`}
+              >
+                <filter.icon size={14} />
+                <span>{filter.label}</span>
+              </motion.button>
+            ))}
+          </div>
         </motion.div>
       </motion.div>
 
@@ -508,6 +630,10 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                 const contactStatus = contact.isGroup 
                   ? contact.status 
                   : (statuses[contact.id] || "Hey there! I'm using ChatApp");
+                const lastMessage = lastMessages[contact.id];
+                const isTyping = typingStatuses[contact.id]?.length > 0;
+                const isPinned = pinnedChats.has(contact.id);
+                const isMuted = mutedChats.has(contact.id);
 
                 return (
                   <motion.div
@@ -516,9 +642,11 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.02, x: 5 }}
-                    className={`relative mb-2 rounded-xl transition-all duration-300 overflow-hidden ${
+                    className={`relative mb-2 rounded-xl transition-all duration-300 overflow-hidden group ${
                       isActive 
                         ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-xl' 
+                        : unreadCount > 0
+                        ? 'bg-white border-2 border-green-200 shadow-md'
                         : 'bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-lg border border-gray-200/50'
                     }`}
                   >
@@ -544,7 +672,7 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                                 ...contact,
                                 photoURL: contact.groupPhoto || contact.photoURL
                               }} 
-                              size="lg" 
+                              size="xl" 
                               showOnlineStatus={false}
                               className={isActive ? 'opacity-90' : ''}
                             />
@@ -557,7 +685,7 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                         ) : (
                           <ProfilePicture 
                             user={contact} 
-                            size="lg" 
+                            size="xl" 
                             showOnlineStatus={true}
                             isOnline={contactIsOnline}
                             className={isActive ? 'opacity-90' : ''}
@@ -609,22 +737,55 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                             ) : (
                               <>
                                 <div className="flex-1 min-w-0">
-                                  <motion.h3 
-                                    whileHover={{ x: 2 }}
-                                    className={`font-semibold truncate ${
-                                      isActive ? 'text-white' : 'text-gray-800'
-                                    }`}
-                                  >
-                                    {displayName}
-                                  </motion.h3>
+                                  <div className="flex items-center space-x-2">
+                                    <motion.h3 
+                                      whileHover={{ x: 2 }}
+                                      className={`font-semibold truncate ${
+                                        isActive ? 'text-white' : unreadCount > 0 ? 'text-gray-900 font-bold' : 'text-gray-800'
+                                      }`}
+                                    >
+                                      {displayName}
+                                    </motion.h3>
+                                    {isPinned && (
+                                      <div className={`text-xs ${
+                                        isActive ? 'text-white/80' : 'text-gray-500'
+                                      }`}>
+                                        📌
+                                      </div>
+                                    )}
+                                    {isMuted && (
+                                      <div className={`text-xs ${
+                                        isActive ? 'text-white/80' : 'text-gray-500'
+                                      }`}>
+                                        🔇
+                                      </div>
+                                    )}
+                                  </div>
                                   <motion.p 
                                     initial={{ opacity: 0.7 }}
                                     animate={{ opacity: 1 }}
                                     className={`text-sm truncate flex items-center ${
-                                      isActive ? 'text-white/80' : 'text-gray-500'
+                                      isActive ? 'text-white/80' : unreadCount > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'
                                     }`}
                                   >
-                                    {contact.isGroup ? (
+                                    {isTyping ? (
+                                      <>
+                                        <motion.span
+                                          animate={{ opacity: [1, 0.5, 1] }}
+                                          transition={{ duration: 1.5, repeat: Infinity }}
+                                          className="text-green-500"
+                                        >
+                                          typing...
+                                        </motion.span>
+                                      </>
+                                    ) : lastMessage ? (
+                                      <>
+                                        {lastMessage.senderId === user?.uid && (
+                                          <span className="mr-1">✓</span>
+                                        )}
+                                        {lastMessage.text.length > 30 ? `${lastMessage.text.substring(0, 30)}...` : lastMessage.text}
+                                      </>
+                                    ) : contact.isGroup ? (
                                       <>
                                         <FiUsers size={12} className="mr-1" />
                                         {contact.participants?.length || 0} members
@@ -643,48 +804,71 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
                                   </motion.p>
                                 </div>
                                 
-                                <div className="flex items-center space-x-2">
-                                  {/* Unread Count Badge */}
-                                  {unreadCount > 0 && (
-                                    <motion.div
-                                      initial={{ scale: 0 }}
-                                      animate={{ scale: 1 }}
-                                      whileHover={{ scale: 1.1 }}
-                                      className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg"
-                                    >
-                                      {unreadCount > 99 ? '99+' : unreadCount}
-                                    </motion.div>
-                                  )}
-                                  
-                                  {/* Edit Button - Only for individual contacts */}
-                                  {!contact.isGroup && (
-                                    <motion.button
-                                      whileHover={{ scale: 1.1, rotate: 5 }}
-                                      whileTap={{ scale: 0.9 }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEditClick(contact);
-                                      }}
-                                      className={`p-1.5 rounded-lg transition-colors ${
-                                        isActive 
-                                          ? 'hover:bg-white/20 text-white/80' 
-                                          : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
-                                      }`}
-                                    >
-                                      <FiEdit size={14} />
-                                    </motion.button>
-                                  )}
-                                  
-                                  {/* Group Admin Badge */}
-                                  {contact.isGroup && contact.isAdmin && (
-                                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      isActive 
-                                        ? 'bg-yellow-400/20 text-yellow-200' 
-                                        : 'bg-yellow-100 text-yellow-700'
-                                    }`}>
-                                      Admin
+                                <div className="flex flex-col items-end space-y-1">
+                                  {/* Time and Status */}
+                                  <div className="flex items-center space-x-2">
+                                    {lastMessage && (
+                                      <span className={`text-xs ${
+                                        isActive ? 'text-white/70' : unreadCount > 0 ? 'text-gray-600 font-medium' : 'text-gray-400'
+                                      }`}>
+                                        {formatMessageTime(lastMessage.time)}
+                                      </span>
+                                    )}
+                                    
+                                    {/* Options Menu */}
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          // Show context menu
+                                        }}
+                                        className={`p-1 rounded-lg transition-colors ${
+                                          isActive 
+                                            ? 'hover:bg-white/20 text-white/80' 
+                                            : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                                        }`}
+                                      >
+                                        <FiMoreVertical size={14} />
+                                      </motion.button>
                                     </div>
-                                  )}
+                                  </div>
+                                  
+                                  {/* Unread Count Badge */}
+                                  <div className="flex items-center space-x-2">
+                                    {unreadCount > 0 && !isMuted && (
+                                      <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        whileHover={{ scale: 1.1 }}
+                                        className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg"
+                                      >
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                      </motion.div>
+                                    )}
+                                    
+                                    {unreadCount > 0 && isMuted && (
+                                      <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="bg-gray-400 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg"
+                                      >
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                      </motion.div>
+                                    )}
+                                    
+                                    {/* Group Admin Badge */}
+                                    {contact.isGroup && contact.isAdmin && (
+                                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        isActive 
+                                          ? 'bg-yellow-400/20 text-yellow-200' 
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}>
+                                        Admin
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </>
                             )}
@@ -730,7 +914,7 @@ export default function UnifiedSidebar({ activeContact, setActiveContact }) {
               {/* User Avatar */}
               <ProfilePicture 
                 user={user} 
-                size="lg" 
+                size="xl" 
                 showOnlineStatus={true}
                 isOnline={true}
               />

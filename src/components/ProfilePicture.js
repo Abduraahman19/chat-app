@@ -47,10 +47,8 @@ export default function ProfilePicture({
 
   const ProfileContent = () => (
     <div className={`relative ${sizeClasses[size]} ${className}`}>
-      <motion.div
-        whileHover={animate ? { scale: 1.05 } : {}}
-        whileTap={animate ? { scale: 0.95 } : {}}
-        className={`relative flex items-center justify-center font-semibold text-white border-2 border-white rounded-full shadow-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+      <div
+        className={`relative flex items-center justify-center font-semibold text-white border-2 border-white rounded-full shadow-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 overflow-hidden ${onClick ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
         onClick={onClick}
       >
         <img
@@ -62,15 +60,8 @@ export default function ProfilePicture({
           }}
         />
         
-        {/* Shine effect for animation */}
-        {animate && (
-          <motion.div
-            animate={{ x: [-100, 200] }}
-            transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
-            className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          />
-        )}
-      </motion.div>
+
+      </div>
 
       {/* Online status indicator */}
       {showOnlineStatus && (
