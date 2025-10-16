@@ -20,6 +20,7 @@ import GroupPhotoUpload from '../components/Chat/GroupPhotoUpload';
 import ChatOptionsMenu from '../components/Chat/ChatOptionsMenu';
 import ForwardModal from '../components/Chat/ForwardModal';
 import GroupMembersModal from '../components/Chat/GroupMembersModal';
+import FullscreenViewer from '../components/Chat/FullscreenViewer';
 
 import PageLoader from '../components/Layout/PageLoader';
 
@@ -38,6 +39,7 @@ export default function Chat() {
   const [showGroupMembersModal, setShowGroupMembersModal] = useState(false);
   const [showAdminSelectionModal, setShowAdminSelectionModal] = useState(false);
   const [selectedNewAdmin, setSelectedNewAdmin] = useState(null);
+  const [fullscreenMedia, setFullscreenMedia] = useState(null);
   const chatId = activeContact ? 
     (activeContact.isGroup ? activeContact.chatId : [user?.uid, activeContact?.id].sort().join('_')) 
     : null;
@@ -558,6 +560,7 @@ export default function Chat() {
                   selectedMessages={selectedMessages}
                   onMessageSelect={handleMessageSelect}
                   selectionMode={selectionMode}
+                  onFullscreenOpen={setFullscreenMedia}
                 />
                 
                 <TypingIndicator typingUsers={typingUsers} />
@@ -753,6 +756,17 @@ export default function Chat() {
           )}
         </div>
       </div>
+      
+      {/* Global Fullscreen Viewer */}
+      {fullscreenMedia && (
+        <div className="fixed inset-0 z-[99999]" style={{ zIndex: 99999 }}>
+          <FullscreenViewer
+            media={fullscreenMedia.media}
+            messageText={fullscreenMedia.messageText}
+            onClose={() => setFullscreenMedia(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }

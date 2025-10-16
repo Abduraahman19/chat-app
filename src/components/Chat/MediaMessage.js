@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiDownload, 
   FiPlay, 
@@ -15,9 +15,27 @@ import {
 import FullscreenViewer from './FullscreenViewer';
 import { toast } from 'react-hot-toast';
 
-export default function MediaMessage({ media, isOwn, messageText }) {
+// Professional shimmer animation styles
+const shimmerStyles = `
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .animate-shimmer {
+    animation: shimmer 1.5s infinite;
+  }
+`;
+
+export default function MediaMessage({ media, isOwn, messageText, onFullscreenOpen }) {
+  // Inject shimmer styles
+  if (typeof document !== 'undefined' && !document.getElementById('shimmer-styles')) {
+    const style = document.createElement('style');
+    style.id = 'shimmer-styles';
+    style.textContent = shimmerStyles;
+    document.head.appendChild(style);
+  }
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showFullscreen, setShowFullscreen] = useState(false);
+
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -53,68 +71,82 @@ export default function MediaMessage({ media, isOwn, messageText }) {
     window.open(viewUrl, '_blank');
   };
 
-  // Handle all image formats
+  // Professional WhatsApp-style image display
   if (media.type === 'image' || (media.originalType && media.originalType.startsWith('image/'))) {
     return (
-      <div className="relative group max-w-sm">
+      <div className="relative max-w-xs">
         <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="relative overflow-hidden rounded-xl shadow-lg cursor-pointer"
-          onClick={() => setShowFullscreen(true)}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          className="relative overflow-hidden rounded-lg cursor-pointer bg-gray-100 shadow-sm"
+          onClick={() => onFullscreenOpen && onFullscreenOpen({ media, messageText })}
         >
+          {/* Professional loading skeleton */}
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse rounded-lg">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
+          </div>
+          
           <img
             src={media.url}
             alt={media.fileName}
-            className="w-full h-auto max-h-80 object-cover"
+            className="relative w-full h-auto min-h-[160px] max-h-80 object-cover rounded-lg transition-all duration-300"
             loading="lazy"
+            onLoad={(e) => {
+              const placeholder = e.target.previousElementSibling;
+              if (placeholder) {
+                placeholder.style.opacity = '0';
+                setTimeout(() => placeholder.style.display = 'none', 300);
+              }
+            }}
           />
           
-          {/* Overlay Controls */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <div className="flex space-x-2">
+          {/* Professional overlay with subtle animations */}
+          <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-all duration-300 rounded-lg group">
+            {/* Minimal download indicator */}
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setShowFullscreen(true)}
-                className="p-2 bg-white/90 text-gray-800 rounded-full shadow-lg hover:bg-white transition-colors"
-              >
-                <FiMaximize2 size={16} />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => handleDownload(e)}
-                className="p-2 bg-white/90 text-gray-800 rounded-full shadow-lg hover:bg-white transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(e);
+                }}
+                className="p-2 bg-white/90 text-gray-700 rounded-full shadow-lg hover:bg-white transition-colors backdrop-blur-sm"
               >
                 <FiDownload size={16} />
               </motion.button>
             </div>
+            
+            {/* Subtle zoom indicator */}
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+              <div className="p-1.5 bg-black/60 text-white rounded-full backdrop-blur-sm">
+                <FiMaximize2 size={12} />
+              </div>
+            </div>
+          </div>
+          
+          {/* Professional timestamp overlay */}
+          <div className="absolute bottom-2 right-2">
+            <div className="px-2 py-1 bg-black/50 text-white text-xs rounded-full backdrop-blur-sm">
+              {formatFileSize(media.fileSize || 0)}
+            </div>
           </div>
         </motion.div>
-
-        {/* File Info */}
-        <div className={`mt-2 text-xs ${isOwn ? 'text-white/80' : 'text-gray-500'}`}>
-          <div className="flex items-center justify-between">
-            <span className="truncate">{media.fileName}</span>
-            <span>{formatFileSize(media.fileSize || 0)}</span>
-          </div>
-        </div>
         
-        {/* Message Text */}
+        {/* Caption with better typography */}
         {messageText && (
-          <div className={`mt-2 text-sm ${isOwn ? 'text-white' : 'text-gray-800'}`}>
+          <motion.div 
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className={`mt-2 text-sm leading-relaxed ${isOwn ? 'text-white/95' : 'text-gray-800'}`}
+          >
             {messageText}
-          </div>
+          </motion.div>
         )}
 
-        {/* Fullscreen Viewer */}
-        {showFullscreen && (
-          <FullscreenViewer
-            media={media}
-            messageText={messageText}
-            onClose={() => setShowFullscreen(false)}
-          />
-        )}
+
       </div>
     );
   }
@@ -223,7 +255,7 @@ export default function MediaMessage({ media, isOwn, messageText }) {
         if (media.originalType && (media.originalType.includes('pdf') || media.originalType.includes('document'))) {
           handleOpenFile(e);
         } else {
-          setShowFullscreen(true);
+          onFullscreenOpen && onFullscreenOpen({ media, messageText });
         }
       }}
     >

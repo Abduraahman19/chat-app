@@ -11,6 +11,7 @@ import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MediaUpload from './MediaUpload';
+import CameraCapture from './CameraCapture';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
@@ -20,6 +21,7 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
   const [showContactForm, setShowContactForm] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -264,41 +266,81 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
             <PlusIcon className="w-5 h-5" />
           </motion.button>
 
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 15 }}
-            whileTap={{ scale: 0.95 }}
-            type="button"
-            onClick={() => {
-              setShowMediaUpload(!showMediaUpload);
-              setShowEmojiPicker(false);
-              setShowContactForm(false);
-              setShowOptionsMenu(false);
-            }}
-            className={`relative rounded-xl p-2 transition-all duration-300 border border-transparent overflow-hidden flex items-center justify-center w-10 h-10 ${
-              showMediaUpload 
-                ? 'bg-gradient-to-r from-purple-100 to-indigo-100 border-purple-300 shadow-lg' 
-                : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:border-purple-200 text-purple-600'
-            }`}
-            aria-label="Attach media"
-          >
-            <div className="absolute inset-0 transition-opacity duration-300 opacity-0 bg-gradient-to-br from-purple-400/10 to-indigo-400/10 hover:opacity-100" />
-            
-            <motion.div
-              animate={showMediaUpload ? { rotate: [0, 10, -10, 0] } : {}}
-              transition={{ duration: 0.5, repeat: showMediaUpload ? Infinity : 0, repeatDelay: 2 }}
-              className="relative z-10"
+          <div className="relative">
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 15 }}
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={() => {
+                setShowMediaUpload(!showMediaUpload);
+                setShowEmojiPicker(false);
+                setShowContactForm(false);
+                setShowOptionsMenu(false);
+              }}
+              className={`relative rounded-xl p-2 transition-all duration-300 border border-transparent overflow-hidden flex items-center justify-center w-10 h-10 ${
+                showMediaUpload 
+                  ? 'bg-gradient-to-r from-purple-100 to-indigo-100 border-purple-300 shadow-lg' 
+                  : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:border-purple-200 text-purple-600'
+              }`}
+              aria-label="Attach media"
             >
-              <FiPaperclip className="w-5 h-5" />
-            </motion.div>
-            
-            {showMediaUpload && (
+              <div className="absolute inset-0 transition-opacity duration-300 opacity-0 bg-gradient-to-br from-purple-400/10 to-indigo-400/10 hover:opacity-100" />
+              
               <motion.div
-                animate={{ x: [-20, 40] }}
-                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
-                className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-              />
-            )}
-          </motion.button>
+                animate={showMediaUpload ? { rotate: [0, 10, -10, 0] } : {}}
+                transition={{ duration: 0.5, repeat: showMediaUpload ? Infinity : 0, repeatDelay: 2 }}
+                className="relative z-10"
+              >
+                <FiPaperclip className="w-5 h-5" />
+              </motion.div>
+              
+              {showMediaUpload && (
+                <motion.div
+                  animate={{ x: [-20, 40] }}
+                  transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
+                  className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                />
+              )}
+            </motion.button>
+
+            {/* Quick attachment options */}
+            <AnimatePresence>
+              {showMediaUpload && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                  className="absolute bottom-12 left-0 z-20 flex flex-col gap-2"
+                >
+                  {/* Camera option */}
+                  <motion.button
+                    whileHover={{ scale: 1.1, x: 5 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      setShowCameraCapture(true);
+                      setShowMediaUpload(false);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    📷 Camera
+                  </motion.button>
+
+                  {/* Gallery option */}
+                  <motion.button
+                    whileHover={{ scale: 1.1, x: 5 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      // Keep existing media upload modal
+                      // Modal will handle gallery selection
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    🖼️ Gallery
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <motion.button
             whileHover={{ scale: 1.1, rotate: 15 }}
@@ -624,11 +666,35 @@ export default function ChatInput({ sendMessage, onNewContact, chatId, activeCon
         )}
       </AnimatePresence>
 
-      {/* Media Upload Modal */}
+      {/* Media Upload Modal - Only show when gallery is clicked */}
       {showMediaUpload && (
         <MediaUpload
           onMediaSelect={handleMediaSelect}
           onClose={() => setShowMediaUpload(false)}
+        />
+      )}
+
+      {/* Camera Capture Modal */}
+      {showCameraCapture && (
+        <CameraCapture
+          onCapture={async (file) => {
+            try {
+              const mediaData = {
+                type: 'image',
+                url: URL.createObjectURL(file),
+                fileName: file.name,
+                fileSize: file.size,
+                format: 'jpeg',
+                originalType: file.type
+              };
+              await handleMediaSelect(mediaData, '');
+              setShowCameraCapture(false);
+            } catch (error) {
+              console.error('Error handling camera capture:', error);
+              toast.error('Failed to process camera image');
+            }
+          }}
+          onClose={() => setShowCameraCapture(false)}
         />
       )}
     </div>

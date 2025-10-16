@@ -40,7 +40,7 @@ export const getUsernameFromEmail = (email) => {
   return email.split('@')[0];
 };
 
-export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [], activeContact = null, highlightedMessageId = null, onScrollToMessage, selectedMessages = [], onMessageSelect, selectionMode = false }) {
+export default function MessageList({ messages, onDeleteMessage, isLoading, contacts = [], activeContact = null, highlightedMessageId = null, onScrollToMessage, selectedMessages = [], onMessageSelect, selectionMode = false, onFullscreenOpen }) {
   const { user } = useAuth();
   const [visibleMessages, setVisibleMessages] = useState(new Set());
   const observerRef = useRef(null);
@@ -311,6 +311,7 @@ export default function MessageList({ messages, onDeleteMessage, isLoading, cont
                       onSelect={onMessageSelect}
                       selectionMode={selectionMode}
                       activeContact={activeContact}
+                      onFullscreenOpen={onFullscreenOpen}
                     />
                   </div>
                 </motion.div>

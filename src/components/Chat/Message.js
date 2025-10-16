@@ -16,7 +16,7 @@ import { FaTimes } from "react-icons/fa";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
-const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGroupChat = false, participantNames = {}, contacts = [], isSelected = false, onSelect, selectionMode = false, activeContact = null }) => {
+const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGroupChat = false, participantNames = {}, contacts = [], isSelected = false, onSelect, selectionMode = false, activeContact = null, onFullscreenOpen }) => {
   const { user } = useAuth();
   const isCurrentUser = message.senderId === user?.uid;
 
@@ -585,6 +585,7 @@ const Message = ({ message, onDelete, showTime = false, senderInfo = null, isGro
                   media={message.media}
                   isOwn={isCurrentUser}
                   messageText={message.text}
+                  onFullscreenOpen={onFullscreenOpen}
                 />
               ) : (
                 <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCamera, FiRotateCw, FiCheck, FiRefreshCw } from 'react-icons/fi';
+import { FiCamera, FiX, FiRotateCw, FiCheck } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
 export default function CameraCapture({ onCapture, onClose }) {
@@ -22,12 +22,11 @@ export default function CameraCapture({ onCapture, onClose }) {
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
+        video: { 
           facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        },
-        audio: false
+        }
       });
       
       setStream(mediaStream);
@@ -35,8 +34,8 @@ export default function CameraCapture({ onCapture, onClose }) {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (error) {
-      console.error('Camera access error:', error);
-      toast.error('Camera access denied or not available');
+      console.error('Error accessing camera:', error);
+      toast.error('Could not access camera. Please check permissions.');
     }
   };
 
@@ -50,8 +49,6 @@ export default function CameraCapture({ onCapture, onClose }) {
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    setIsCapturing(true);
-    
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
@@ -60,40 +57,39 @@ export default function CameraCapture({ onCapture, onClose }) {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw video frame to canvas
+    // Draw the video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert to blob
     canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      setCapturedImage({
-        blob,
-        url,
-        width: canvas.width,
-        height: canvas.height
-      });
-      setIsCapturing(false);
-      stopCamera();
+      if (blob) {
+        const imageUrl = URL.createObjectURL(blob);
+        setCapturedImage(imageUrl);
+        setIsCapturing(true);
+        stopCamera();
+      }
     }, 'image/jpeg', 0.9);
   };
 
   const retakePhoto = () => {
     if (capturedImage) {
-      URL.revokeObjectURL(capturedImage.url);
+      URL.revokeObjectURL(capturedImage);
       setCapturedImage(null);
     }
+    setIsCapturing(false);
     startCamera();
   };
 
-  const sendPhoto = () => {
+  const confirmPhoto = () => {
     if (capturedImage) {
-      // Create file from blob
-      const file = new File([capturedImage.blob], `camera-${Date.now()}.jpg`, {
-        type: 'image/jpeg'
-      });
-      
-      onCapture(file, capturedImage.url);
-      onClose();
+      // Convert blob URL to file
+      fetch(capturedImage)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          onCapture(file);
+          onClose();
+        });
     }
   };
 
@@ -107,40 +103,39 @@ export default function CameraCapture({ onCapture, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black z-50 flex flex-col"
+        className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm text-white relative z-10">
+        {/* Professional Header */}
+        <motion.div 
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="flex items-center justify-between p-4 bg-black/70 backdrop-blur-xl border-b border-white/20"
+        >
           <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05, backgroundColor: 'rgba(239,68,68,0.2)' }}
+            whileTap={{ scale: 0.95 }}
             onClick={onClose}
-            className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+            className="p-2.5 text-white/90 rounded-xl hover:bg-red-500/20 transition-all duration-200"
           >
-            <FiX size={24} />
+            <FiX size={20} />
           </motion.button>
           
-          <h3 className="text-lg font-semibold">
-            {capturedImage ? 'Photo Preview' : 'Take Photo'}
-          </h3>
+          <h3 className="text-white font-medium text-lg">Camera</h3>
           
-          {!capturedImage && (
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={switchCamera}
-              className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
-            >
-              <FiRotateCw size={24} />
-            </motion.button>
-          )}
-        </div>
+          <motion.button
+            whileHover={{ scale: 1.05, rotate: 180 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={switchCamera}
+            className="p-2.5 text-white/90 rounded-xl hover:bg-white/10 transition-all duration-200"
+          >
+            <FiRotateCw size={18} />
+          </motion.button>
+        </motion.div>
 
-        {/* Camera/Preview Area */}
+        {/* Camera View */}
         <div className="flex-1 relative overflow-hidden">
-          {!capturedImage ? (
-            // Live Camera View
-            <div className="relative w-full h-full">
+          {!isCapturing ? (
+            <>
               <video
                 ref={videoRef}
                 autoPlay
@@ -149,97 +144,64 @@ export default function CameraCapture({ onCapture, onClose }) {
                 className="w-full h-full object-cover"
               />
               
-              {/* Camera Overlay */}
-              <div className="absolute inset-0 pointer-events-none">
-                {/* Grid Lines */}
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-30">
-                  {[...Array(9)].map((_, i) => (
-                    <div key={i} className="border border-white/20" />
-                  ))}
-                </div>
-                
-                {/* Center Focus Circle */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="w-20 h-20 border-2 border-white/60 rounded-full"
-                  />
-                </div>
-              </div>
-            </div>
+              {/* Professional Camera Controls */}
+              <motion.div 
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="absolute bottom-8 left-0 right-0 flex justify-center"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={capturePhoto}
+                  className="relative w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300"
+                >
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center border-4 border-white">
+                    <FiCamera size={28} className="text-gray-700" />
+                  </div>
+                  {/* Pulse animation */}
+                  <div className="absolute inset-0 rounded-full bg-white/30 animate-ping" />
+                </motion.button>
+              </motion.div>
+            </>
           ) : (
-            // Captured Photo Preview
-            <div className="relative w-full h-full flex items-center justify-center bg-black">
+            <>
               <img
-                src={capturedImage.url}
+                src={capturedImage}
                 alt="Captured"
-                className="max-w-full max-h-full object-contain"
+                className="w-full h-full object-cover"
               />
-            </div>
-          )}
-        </div>
-
-        {/* Controls */}
-        <div className="p-6 bg-black/80 backdrop-blur-sm">
-          {!capturedImage ? (
-            // Camera Controls
-            <div className="flex items-center justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={capturePhoto}
-                disabled={isCapturing || !stream}
-                className={`w-20 h-20 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center ${
-                  isCapturing ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {isCapturing ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  >
-                    <FiRefreshCw size={32} className="text-white" />
-                  </motion.div>
-                ) : (
-                  <FiCamera size={32} className="text-white" />
-                )}
-              </motion.button>
-            </div>
-          ) : (
-            // Preview Controls
-            <div className="flex items-center justify-center space-x-6">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={retakePhoto}
-                className="flex items-center px-6 py-3 bg-white/20 text-white rounded-full hover:bg-white/30 transition-colors"
-              >
-                <FiRefreshCw className="mr-2" size={20} />
-                Retake
-              </motion.button>
               
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={sendPhoto}
-                className="flex items-center px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
+              {/* Professional Confirm Controls */}
+              <motion.div 
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="absolute bottom-8 left-0 right-0 flex justify-center items-center space-x-12"
               >
-                <FiCheck className="mr-2" size={20} />
-                Send
-              </motion.button>
-            </div>
+                <motion.button
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(239,68,68,0.3)' }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={retakePhoto}
+                  className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500/30 transition-all duration-200 border border-white/20"
+                >
+                  <FiX size={22} />
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={confirmPhoto}
+                  className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-2xl"
+                >
+                  <FiCheck size={24} />
+                </motion.button>
+              </motion.div>
+            </>
           )}
         </div>
 
-        {/* Instructions */}
-        {!capturedImage && (
-          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 text-white/60 text-center">
-            <p className="text-sm">Tap the camera button to take a photo</p>
-          </div>
-        )}
-
-        {/* Hidden Canvas for Capture */}
+        {/* Hidden canvas for image capture */}
         <canvas ref={canvasRef} className="hidden" />
       </motion.div>
     </AnimatePresence>
